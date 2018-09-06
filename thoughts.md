@@ -205,6 +205,19 @@ Should most Coalton definitions be in a giant macro?
 
 Or can we get away with piecemeal macros? What about top-level `letrec`?
 
+### ASDF File Type
+
+Entire Coalton files could be written in files and we could create an ASDF file type (?) allowing for
+
+```
+(asdf:defsystem #:foo
+  :serial t
+  :components ((:file "lisp-file")          ; lisp code
+               (:coalton "coalton-file")))  ; coalton code
+```
+
+What about post-compilation-unit hooks?
+
 ### Function Definitions
 
 no real ideas here, depends more or less how we want to define pattern matching, whether we want guards, how we deal with annotations on variable bindings, etc.
@@ -217,7 +230,7 @@ no real ideas here, depends more or less how we want to define pattern matching,
     (cons x xs) => (+ 1 (len xs)))))
 ```
 
-### Unsafe Splicing
+### Unsafe Lisp-in-ML Splicing
 
 There should be a way to splice raw Lisp code unsafely into Coalton code using a `lisp` construct. This may deserve special character syntax, but that should be dictated by Real World usage, not speculation.
 
@@ -230,6 +243,16 @@ One example of a `(lisp <type> <lisp-form>)` syntax:
 ```
 
 This could be **unsafe**! Coalton may as well assume that the type is correct.
+
+### Safe ML-in-LIsp Splicing
+
+There should be a way to splice Coalton code into Lisp code using the `ml` construct. If `speed > safety`, then (automatic) dynamic type checks are done.
+
+```
+(coalton:type f (-> integer integer))
+(defun foo (x)
+  (+ 2 (ml f x))) ; will check (INTEGERP X)
+```
 
 ### Bless
 
