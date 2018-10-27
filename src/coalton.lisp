@@ -19,10 +19,19 @@
   "A bare type variable. Required to be within a quantifier."
   (symbol (required 'symbol) :type symbol :read-only t))
 
+;;; Beware, don't use (VECTOR MONOTYPE)! It will "upgrade" (more like
+;;; downgrade, am I right?) to (VECTOR T).
+(defun monotype-vector-p (v)
+  (and (vectorp v)
+       (every (lambda (x) (typep x 'monotype)) v)))
+
+(deftype monotype-vector ()
+  '(satisfies monotype-vector-p))
+
 (defstruct (type-application (:constructor type-application (constructor arguments)))
   "A type application."
   (constructor (required 'constructor))
-  (arguments   (required 'arguments)   :type (vector monotype) :read-only t))
+  (arguments   (required 'arguments)   :type monotype-vector :read-only t))
 
 ;;; ## Polytypes
 ;;;
@@ -41,11 +50,17 @@
   "Is the type TY a well-formed type?"
   (labels ((recurse (ty vars)
              (etypecase ty
-               (type-quantifier (recurse (type-quantifier-expression ty)
-                                         (union vars (list (type-quantifier-variable ty)))))
-               (type-variable (boolify (member (type-variable-symbol ty) vars)))
-               ;; TODO: check arity.
-               (type-application (every (lambda (arg) (recurse arg vars)) (type-application-arguments ty))))))
+               ;; We do *NOT* allow implicit universal quantification
+               ;; of free variables.
+               (type-quantifier
+                (recurse (type-quantifier-expression ty)
+                         (union vars (list (type-quantifier-variable ty)))))
+               (type-variable
+                (boolify (member (type-variable-symbol ty) vars)))
+               ;; TODO: check arity when we got the data.
+               (type-application
+                (every (lambda (arg) (recurse arg vars))
+                       (type-application-arguments ty))))))
     (recurse ty nil)))
 
 ;;; Info Database
