@@ -11,7 +11,8 @@
   :serial t
   :components ((:file "package")
                (:file "utilities")
-               (:file "coalton")))
+               (:file "coalton")
+               (:file "faux-macros")))
 
 (asdf:defsystem #:coalton/tests
   :description "Tests for COALTON."

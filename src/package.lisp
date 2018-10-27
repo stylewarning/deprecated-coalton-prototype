@@ -2,8 +2,17 @@
 
 (defpackage #:coalton
   (:documentation "Public interface to COALTON.")
-  (:use #:cl)
-  (:export))
+  (:use)                                ; Keep the package clean!
+  (:export
+   #:coalton
+   #:define
+   #:define-type-alias
+   #:define-type)
+  (:export
+   #:declare
+   #:fn
+   #:progn
+   #:match))
 
 (defpackage #:coalton-impl
   (:documentation "Implementation and runtime for COALTON. This is a package private to the COALTON system and is not intended for public use.")

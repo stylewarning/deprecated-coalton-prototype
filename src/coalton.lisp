@@ -73,3 +73,13 @@
   (make-hash-table :test 'eql)
   "Database of Coalton type definitions.")
 
+;;; Entry Point
+
+(defun process-coalton-toplevel-forms (forms)
+  (declare (ignore forms))
+  (values))
+
+;;; Coalton Macros
+
+(defmacro coalton:coalton (&body toplevel-forms)
+  (process-coalton-toplevel-forms toplevel-forms))
