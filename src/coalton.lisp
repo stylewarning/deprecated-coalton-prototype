@@ -2,6 +2,9 @@
 
 (in-package #:coalton-impl)
 
+(defvar *print-coalton* nil
+  "Print Coalton things as in Coalton.")
+
 ;;; # Hindley-Milner Types
 ;;;
 ;;; ## Monotypes
@@ -19,7 +22,7 @@
 (defstruct (type-application (:constructor type-application (constructor arguments)))
   "A type application."
   (constructor (required 'constructor))
-  (arguments (required 'arguments) :type (vector monotype) :read-only t))
+  (arguments   (required 'arguments)   :type (vector monotype) :read-only t))
 
 ;;; ## Polytypes
 ;;;
@@ -31,10 +34,21 @@
 
 (defstruct (type-quantifier (:constructor type-quantifier (variable expression)))
   "Quantification of a type expression over a type variable."
-  (variable (required 'variable) :type type-variable :read-only t)
-  (expression (required 'expression) :type polytype :read-only t))
+  (variable   (required 'variable)   :type type-variable :read-only t)
+  (expression (required 'expression) :type polytype      :read-only t))
 
-;;;
+(defun well-formed-type-p (ty)
+  "Is the type TY a well-formed type?"
+  (labels ((recurse (ty vars)
+             (etypecase ty
+               (type-quantifier (recurse (type-quantifier-expression ty)
+                                         (union vars (list (type-quantifier-variable ty)))))
+               (type-variable (boolify (member (type-variable-symbol ty) vars)))
+               ;; TODO: check arity.
+               (type-application (every (lambda (arg) (recurse arg vars)) (type-application-arguments ty))))))
+    (recurse ty nil)))
+
+;;; Info Database
 
 (define-global-var **function-definitions**
   (make-hash-table :test 'eql)
