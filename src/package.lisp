@@ -9,6 +9,10 @@
    #:define-type-alias
    #:define-type)
   (:export
+   #:->
+   )
+  (:export
+   #:forall
    #:declare
    #:fn
    #:progn

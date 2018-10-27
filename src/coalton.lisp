@@ -18,9 +18,18 @@
 (deftype monotype ()
   '(or type-variable type-application))
 
-(defstruct (type-variable (:constructor type-variable (symbol)))
+(define-global-var **interned-type-variables** (tg:make-weak-hash-table :weakness ':value)
+  "Table holding a mapping between symbols and TYPE-VARIABLEs.")
+
+(defstruct (type-variable (:constructor %type-variable (symbol)))
   "A bare type variable. Required to be within a quantifier."
   (symbol (required 'symbol) :type symbol :read-only t))
+
+(defun type-variable (symbol)
+  (check-type symbol symbol)
+  (alexandria:if-let ((tyvar (gethash symbol **interned-type-variables**)))
+    tyvar
+    (setf (gethash symbol **interned-type-variables**) (%type-variable symbol))))
 
 ;;; Beware, don't use (VECTOR MONOTYPE)! It will "upgrade" (more like
 ;;; downgrade, am I right?) to (VECTOR T).
@@ -122,13 +131,125 @@
       (warn "Overwriting derived type of ~S" var))
     (setf (entry-derived-type info) new-value)))
 
-(define-global-var **type-definitions**
-  (make-hash-table :test 'eql)
-  "Database of Coalton type definitions.")
 
-(defun parse-type-expression (expr)
-  ;; TODO: Actually parse it out, yo.
-  expr)
+;;; A type constructor is not a constructor for a value, but a
+;;; constructor for a *type*! Get with the program!
+(defstruct type-constructor
+  (name (required 'name) :type symbol        :read-only t)
+  (arity 0               :type unsigned-byte :read-only t))
+
+;;; TODO: Aliases.
+
+(define-global-var **type-definitions**
+    (make-hash-table :test 'eql)
+  "Database of Coalton type definitions. These are mappings from symbols to type constructors.")
+
+;;; Some initial type constructors.
+;;;
+;;; Hindley-Milner definitely needs the -> constructor!
+(setf (gethash 'coalton:-> **type-definitions**)
+      (make-type-constructor :name 'coalton:->
+                             :arity 2))
+
+(defun type-knownp (tyname)
+  (check-type tyname symbol)
+  (nth-value 1 (gethash tyname **type-definitions**)))
+
+(defun find-type (tyname)
+  (values (gethash tyname **type-definitions**)))
+
+(defun parse-type-expression (whole-expr)
+  (labels ((parse (expr bound seen allow-quantifiers)
+             (etypecase expr
+               (symbol
+                (cond
+                  ((member expr bound)
+                   (values (type-variable expr)
+                           bound
+                           (cons expr seen)))
+
+                  ((type-knownp expr)
+                   ;; Should be a 0-arity constructor.
+                   (let ((tycon (find-type expr)))
+                     ;; TODO: This could possibly be an alias, in
+                     ;; which case it won't have arity.
+                     (unless (zerop (type-constructor-arity tycon))
+                       (error-parsing whole-expr
+                                      "The type ~S shows up as if it is ~
+                                       a nullary type constructor, but ~
+                                       in fact, it should have an arity ~
+                                       of ~D."
+                                      expr (type-constructor-arity tycon))))
+                   (values
+                    (type-application expr #())
+                    bound
+                    seen))
+
+                  (t
+                   (error-parsing whole-expr
+                                  "Couldn't resolve the type ~S"
+                                  expr))))
+               (list
+                (alexandria:destructuring-case expr
+                  ((coalton:forall var subexpr)
+                   ;; Don't allow nested quantification.
+                   (unless allow-quantifiers
+                     (error-parsing whole-expr "Illegal nested quantifier."))
+                   ;; Eliminate redundant quantifiers.
+                   (if (member var bound)
+                       (values (parse subexpr bound seen allow-quantifiers))
+                       (multiple-value-bind (result new-bound new-seen)
+                           (parse subexpr (cons var bound) seen t)
+                         ;; If we didn't see our variable, then we don't
+                         ;; need the quantifier.
+                         (if (not (member var new-seen))
+                             (values result new-bound new-seen)
+                             (values (type-quantifier (type-variable var) result)
+                                     new-bound
+                                     new-seen)))))
+                  ((t &rest tyargs)
+                   (let ((tycon-name (first expr)))
+                     (unless (type-knownp tycon-name)
+                       (error-parsing whole-expr
+                                      "Unknown type constructor ~S"
+                                      tycon-name))
+                     (let* ((tycon (find-type tycon-name))
+                            (arity (type-constructor-arity tycon)))
+                       (unless (= arity (length tyargs))
+                         (error-parsing whole-expr
+                                        "The type expression ~S has the wrong ~
+                                         arity. Got ~D argument~:P when I ~
+                                         expected ~D."
+                                        expr
+                                        (length tyargs)
+                                        arity))
+
+                       ;; Go through and parse everything out.
+                       (let ((all-bound bound)
+                             (all-seen seen)
+                             (arguments (make-array arity :initial-element nil)))
+                         (loop :for i :from 0
+                               :for tyarg :in tyargs
+                               :do (multiple-value-bind (result new-bound new-seen)
+                                       (parse tyarg all-bound all-seen nil)
+                                     (setf all-bound new-bound
+                                           all-seen new-seen
+                                           (aref arguments i) result)))
+                         ;; Return the constructed type.
+                         (values (type-application tycon-name arguments)
+                                 all-bound
+                                 all-seen))))))))))
+    (multiple-value-bind (type bound seen) (parse whole-expr nil nil t)
+      ;; Check for unquantified variables, and optionally quantify
+      ;; them.
+      (alexandria:when-let ((free (set-difference seen bound)))
+        (cerror "Quantify the type."
+                "Parsed a type with unquantified free variables: ~{~S~^, ~}."
+                free)
+        (dolist (free-var free)
+          (setf type (type-quantifier (type-variable free-var) type))))
+      ;; Return the parsed type.
+      type)))
 
 ;;; # Compiler
 ;;;
@@ -206,6 +327,27 @@
     (setf (var-declared-type var) type)
     ;; Produce no code.
     (values)))
+
+(defun parse-define-type-alias-form (form)
+  "Parse a COALTON:DEFINE-TYPE-ALIAS form."
+  (check-compound-form form 'coalton:define-type-alias)
+  (check-compound-form-length form 3)
+  (destructuring-bind (def-symbol tyname type-expr) form
+    (declare (ignore def-symbol))
+    (unless (symbolp tyname)
+      (error-parsing form "The second argument should be a symbol."))
+    (values tyname (parse-type-expression type-expr))))
+
+(defmethod compile-toplevel-special-form ((operator (eql 'coalton:define-type-alias)) whole)
+  (multiple-value-bind (tyname type) (parse-define-type-alias-form whole)
+    ;; Establish the alias as a side-effect.
+    ;;
+    ;; TODO: Make this better. Actually check things, and abstract out
+    ;; the whole table access dealio here.
+    (setf (gethash tyname **type-definitions**) `(alias ,type))
+    ;; Produce no code.
+    (values)))
+
 
 ;;; Entry Point
 

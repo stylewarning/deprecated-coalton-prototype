@@ -5,7 +5,8 @@
   :author "Robert Smith <robert@stylewarning.com>"
   :license "MIT"
   :depends-on (#:alexandria
-               #:global-vars)
+               #:global-vars
+               #:trivial-garbage)
   :in-order-to ((asdf:test-op (asdf:test-op #:coalton/tests)))
   :pathname "src/"
   :serial t
