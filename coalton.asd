@@ -4,11 +4,14 @@
   :description "A dialect of ML in Common Lisp."
   :author "Robert Smith <robert@stylewarning.com>"
   :license "MIT"
-  :depends-on (#:alexandria)
+  :depends-on (#:alexandria
+               #:global-vars)
   :in-order-to ((asdf:test-op (asdf:test-op #:coalton/tests)))
   :pathname "src/"
   :serial t
-  :components ((:file "package")))
+  :components ((:file "package")
+               (:file "utilities")
+               (:file "coalton")))
 
 (asdf:defsystem #:coalton/tests
   :description "Tests for COALTON."

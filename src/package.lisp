@@ -8,4 +8,5 @@
 (defpackage #:coalton-impl
   (:documentation "Implementation and runtime for COALTON. This is a package private to the COALTON system and is not intended for public use.")
   (:use #:cl)
+  (:import-from #:global-vars #:define-global-var)
   (:export))
