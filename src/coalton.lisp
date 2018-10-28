@@ -268,6 +268,109 @@
                                            coalton:define-type
                                            coalton:declare))
 
+;;; ## Value Analysis
+;;;
+;;; For values, we follow the usual grammar for the simply typed
+;;; lambda calculus, with a modicum of practical extensions. The
+;;; precise grammar is:
+;;;
+;;;     <atom> := <CL Integer>
+;;;             | ...
+;;;
+;;;     <expr> := <atom>
+;;;             | <variable>         ; variable
+;;;             | (<expr> <expr>)    ; application
+;;;             | (fn <variable> <expression>)
+;;;                                  ; abstraction
+;;;             | (let ((<variable> <expression>) ...) <expression>)
+;;;                                  ; lexical binding
+;;;             | (if <expr> <expr> <expr>
+;;;                                  ; conditional
+;;;             | (progn <expr> ...) ; sequence
+;;;             | (lisp <type> <expr>)
+;;;                                  ; Lisp escape
+;;;
+;;; TODO: Some syntax isn't accounted for:
+;;;
+;;;          - LETREC
+;;;          - Top-level syntax
+;;;          - All of the desired atomic data
+;;;          - Variable declarations
+;;;          - Literal syntax for some constructors
+;;;
+;;; This is a template:
+(defun compile-value-to-lisp (form)
+  "Compile the Coalton form FORM into Lisp code."
+  ;; XXX: Doesn't make use of type info yet!
+  (labels ((analyze (expr env)
+             (cond
+               ((atom expr)
+                (etypecase expr
+                  (null    (error-parsing expr "NIL is not allowed!"))
+                  (symbol  (analyze-variable expr env))
+                  (integer (analyze-atom expr env))))
+               ((alexandria:proper-list-p expr)
+                (alexandria:destructuring-case expr
+                  ((coalton:fn var subexpr)
+                   (analyze-abstraction var subexpr env))
+                  ((coalton:let bindings subexpr)
+                   (analyze-let bindings subexpr env))
+                  ((coalton:if test then else)
+                   (analyze-if test then else env))
+                  ((coalton:lisp type lisp-expr)
+                   (analyze-lisp type lisp-expr env))
+                  ((coalton:match expr &rest patterns)
+                   (analyze-match expr patterns env))
+                  ((coalton:progn &rest exprs)
+                   (analyze-sequence exprs env))
+                  ((t &rest rands)
+                   (analyze-application (first expr) rands env))))
+               (t (error-parsing expr "The expression is not a valid value expression."))))
+
+           (analyze-atom (atom env)
+             (declare (ignore env))
+             ;; Just return the atom.
+             atom)
+           (analyze-variable (var env)
+             (declare (ignore env))
+             ;; Just return the variable.
+             ;;
+             ;; XXX: Do we have to special-case any variable? We can
+             ;; statically detect if it's not used. But so can the
+             ;; compiler.
+             var)
+           (analyze-abstraction (var subexpr env)
+             ;; XXX: a VAR with an &-name will cause breakage
+             `(cl:lambda (,var) ,(analyze subexpr env)))
+           (analyze-let (bindings subexpr env)
+             `(cl:let ,(loop :for (bind-var bind-val) :in bindings
+                             :collect `(,bind-var ,(analyze bind-val env)))
+                ,(analyze subexpr env)))
+           (analyze-if (test then else env)
+             `(cl:if ,(analyze test env)
+                     ,(analyze then env)
+                     ,(analyze else env)))
+           (analyze-lisp (type lisp-expr env)
+             (declare (ignore type env))
+             lisp-expr)
+           (analyze-match (expr patterns env)
+             (declare (ignore expr patterns env))
+             (error "TODO: unsupported"))
+           (analyze-sequence (exprs env)
+             `(progn
+                ,@(loop :for expr :in exprs
+                        :collect (analyze expr env))))
+           (analyze-application (rator rands env)
+             ;;; XXX: We should special-case for global function
+             ;;; symbols and call them in the Lisp-2 fashion.
+             `(cl:funcall ,(analyze rator env)
+                          ,@(loop :for rand :in rands :collect (analyze rand env)))))
+    (analyze form nil)))
+
+
+
+;;; ## Compilation
+
 (defun compile-toplevel-form (form)
   (cond
     ;; An atomic form at the top-level. Consider me spooked.
@@ -347,6 +450,50 @@
     (setf (gethash tyname **type-definitions**) `(alias ,type))
     ;; Produce no code.
     (values)))
+
+(defun parse-define-form (form)
+  "Parse a COALTON:DEFINE form."
+  (check-compound-form form 'coalton:define)
+  (check-compound-form-length form 3)
+  ;; Defines either define a value or a function. Values and functions
+  ;; in Coalton occupy the namespace, but the intent of the user can
+  ;; be distinguished. A definition either looks like:
+  ;;
+  ;;     (DEFINE <var> <val>)
+  ;;
+  ;; or
+  ;;
+  ;;     (DEFINE (<fvar> <arg>*) <val>)
+  ;;
+  ;; The former defines a variable, the latter defines a function.
+  (destructuring-bind (def-symbol var-thing val) form
+    (declare (ignore def-symbol))
+    (cond
+      ((null var-thing)
+       (error-parsing form "Found a null value where a symbol or function ~
+                            was expected."))
+      ((symbolp var-thing)
+       (parse-define-form-variable var-thing val))
+      ((and (listp var-thing)
+            (every #'symbolp var-thing))
+       (parse-define-form-function (first var-thing) (rest var-thing) val))
+      (t
+       (error-parsing form "Invalid second argument.")))))
+
+(defun parse-define-form-variable (var val)
+  ;; The (DEFINE <var> <val>) case.
+  (declare (ignore val))
+  (check-type var symbol)
+  (error "..."))
+
+(defun parse-define-form-function (fvar args val)
+  ;; The (DEFINE (<fvar> . <args>) <val>) case.
+  (declare (ignore fvar args val))
+  (error "..."))
+
+(defmethod compile-toplevel-special-form ((operator (eql 'coalton:define)) whole)
+  (declare (ignore whole))
+  )
 
 
 ;;; Entry Point

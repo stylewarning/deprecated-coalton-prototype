@@ -16,7 +16,10 @@
    #:declare
    #:fn
    #:progn
-   #:match))
+   #:match
+   #:let
+   #:if
+   #:lisp))
 
 (defpackage #:coalton-impl
   (:documentation "Implementation and runtime for COALTON. This is a package private to the COALTON system and is not intended for public use.")

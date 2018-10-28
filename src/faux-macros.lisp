@@ -42,5 +42,14 @@
 (define-coalton-editor-macro coalton:fn (var &body form)
   "A lambda abstraction.")
 
-(define-coalton-editor-macro coalton:match (var &body patterns)
+(define-coalton-editor-macro coalton:match (expr &body patterns)
   "Pattern matching construct.")
+
+(define-coalton-editor-macro coalton:let (bindings &body form)
+  "A lexical LET binding.")
+
+(define-coalton-editor-macro coalton:if (test then else)
+  "A conditional construct.")
+
+(define-coalton-editor-macro coalton:lisp (type lisp-expr)
+  "An escape from Coalton into the Lisp world.")
