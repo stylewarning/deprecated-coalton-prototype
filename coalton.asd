@@ -6,13 +6,20 @@
   :license "MIT"
   :depends-on (#:alexandria
                #:global-vars
-               #:trivial-garbage)
+               #:trivial-garbage
+               #:optima)
   :in-order-to ((asdf:test-op (asdf:test-op #:coalton/tests)))
   :pathname "src/"
   :serial t
   :components ((:file "package")
                (:file "utilities")
+               (:file "types")
+               (:file "parse-type")
+               (:file "early-types")
+               (:file "global-environment")
+               (:file "hindley-milner")
                (:file "coalton")
+               (:file "forward-declarations")
                (:file "faux-macros")))
 
 (asdf:defsystem #:coalton/tests

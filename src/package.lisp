@@ -10,9 +10,11 @@
    #:define-type)
   (:export
    #:->
+   #:integer
+   #:boolean
+   #:unit
    )
   (:export
-   #:forall
    #:declare
    #:fn
    #:progn
@@ -21,8 +23,14 @@
    #:if
    #:lisp))
 
+(defpackage #:coalton-user
+  (:documentation "User package for Coalton.")
+  (:use #:coalton))
+
 (defpackage #:coalton-impl
   (:documentation "Implementation and runtime for COALTON. This is a package private to the COALTON system and is not intended for public use.")
   (:use #:cl)
-  (:import-from #:global-vars #:define-global-var)
+  (:import-from #:global-vars
+                #:define-global-var
+                #:define-global-var*)
   (:export))
