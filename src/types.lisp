@@ -29,7 +29,7 @@
       (error "Couldn't find definition of tycon ~S" tycon-name)))
 
 
-(defstruct (ty (:constructor nil)))
+;;; TY is forward declared in node.lisp
 
 (defstruct (tyvar (:include ty)
                   (:constructor %make-tyvar))

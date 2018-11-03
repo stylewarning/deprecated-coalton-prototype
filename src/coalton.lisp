@@ -49,6 +49,7 @@
 ;;;          - Variable declarations
 ;;;          - Literal syntax for some constructors
 ;;;
+
 (defun compile-value-to-lisp (form)
   "Compile the Coalton form FORM into Lisp code."
   ;; XXX: Doesn't make use of type info yet!

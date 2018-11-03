@@ -13,8 +13,10 @@
   :serial t
   :components ((:file "package")
                (:file "utilities")
+               (:file "node")
                (:file "types")
                (:file "parse-type")
+               (:file "parse-value")
                (:file "early-types")
                (:file "global-environment")
                (:file "hindley-milner")
