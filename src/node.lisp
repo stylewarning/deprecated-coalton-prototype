@@ -24,10 +24,13 @@
   `(satisfies binding-list-p))
 
 (defmacro define-node-type (name &body slots)
-  `(defstruct (,name (:include node)
-                     (:constructor ,name ,(mapcar #'first slots)))
-     ,@(loop :for (slot-name slot-type) :in slots
-             :collect `(,slot-name nil :type ,slot-type :read-only t))))
+  (multiple-value-bind (slots decls doc) (alexandria:parse-body slots :documentation t)
+    (declare (ignore decls))
+    `(defstruct (,name (:include node)
+                       (:constructor ,name ,(mapcar #'first slots)))
+       ,@(if (null doc) nil (list doc))
+       ,@(loop :for (slot-name slot-type) :in slots
+               :collect `(,slot-name nil :type ,slot-type :read-only t)))))
 
 (define-node-type node-literal
   (value t))
