@@ -2,6 +2,8 @@
 
 (in-package #:coalton-impl)
 
+;;;;;;;;;;;;;;;;;;;;;;; Global Value Bindings ;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defstruct entry
   internal-name
   declared-type
@@ -63,4 +65,9 @@
     (when (entry-derived-type info)
       (warn "Overwriting derived type of ~S" var))
     (setf (entry-derived-type info) new-value)))
+
+
+;;;;;;;;;;;;;;;;;;;;;; Global Type Definitions ;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; See types.lisp
 

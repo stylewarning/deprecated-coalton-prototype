@@ -71,13 +71,17 @@
                    ,(analyze (node-let-subexpr expr))))
 
                (node-letrec
-                ;; TODO: fixme
-                #+ignore
-                (let* ((var (node-letrec-var expr))
-                       (val (node-letrec-val expr))
-                       (subexpr (node-letrec-subexpr expr)))
-                  `(let (,var)
-                     (setf ,var ,(analyze val))
+                ;; TODO: fixme? this is broken... this isn't quite
+                ;; right and only works well for functions
+                (let* ((bindings (node-letrec-bindings expr))
+                       (subexpr (node-letrec-subexpr expr))
+                       (vars (mapcar #'car bindings))
+                       (vals (mapcar #'cdr bindings)))
+                  `(let (,@vars)
+                     (psetf ,@(loop :for var :in vars
+                                    :for val :in vals
+                                    :collect var
+                                    :collect (analyze val)))
                      ,(analyze subexpr))))
 
                (node-if
@@ -160,6 +164,7 @@
     ;; Produce no code.
     (values)))
 
+#+#:ignore
 (defun parse-define-type-alias-form (form)
   "Parse a COALTON:DEFINE-TYPE-ALIAS form."
   (check-compound-form form 'coalton:define-type-alias)
@@ -170,6 +175,7 @@
       (error-parsing form "The second argument should be a symbol."))
     (values tyname (parse-type-expression type-expr))))
 
+#+#:ignore
 (defmethod compile-toplevel-special-form ((operator (eql 'coalton:define-type-alias)) whole)
   (multiple-value-bind (tyname type) (parse-define-type-alias-form whole)
     ;; Establish the alias as a side-effect.
@@ -179,6 +185,52 @@
     (setf (gethash tyname **type-definitions**) `(alias ,type))
     ;; Produce no code.
     (values)))
+
+(defun parse-define-type-form (form)
+  (destructuring-bind (def-type type &rest ctors) form
+    (assert (eql 'coalton:define-type def-type))
+    (assert (not (null type)))
+    (setf type (alexandria:ensure-list type))
+    (destructuring-bind (tycon-name &rest tyvar-names) type
+      (when (tycon-knownp tycon-name)
+        (error "Already defined tycon: ~S" tycon-name))
+      (assert (every #'symbolp tyvar-names))
+      (let* ((arity (length tyvar-names))
+             (tycon (make-tycon :name tycon-name :arity arity))
+             (constructors nil))
+        (multiple-value-bind (ty fvs) (parse-type-expression type :extra-tycons (list tycon))
+          (dolist (ctor ctors)
+            (typecase ctor
+              (symbol
+               (push (list ':variable ctor ty) constructors))
+              (alexandria:proper-list
+               (destructuring-bind (name argty) ctor
+                 (push (list ':function
+                             name
+                             (make-function-type
+                              (parse-type-expression argty :variable-assignments fvs)
+                              ty))
+                       constructors)))))
+          (values tycon ty constructors fvs))))))
+
+;;; XXX FIXME: consider using other types instead of structs.
+(defmethod compile-toplevel-special-form ((operator (eql 'coalton:define-type)) whole)
+  (multiple-value-bind (tycon ty ctors fvs) (parse-define-type-form whole)
+    (declare (ignore ty fvs))
+    (let ((super-name (tycon-name tycon)))
+      `(progn
+         (defstruct (,super-name (:constructor nil)))
+         ,@(loop :for (kind sub-name ty) :in (mapcar #'first ctors)
+                 :append (ecase kind
+                           (:variable
+                            (list
+                             `(defstruct (,sub-name (:include ,super-name)))
+                             ;; XXX FIXME
+                             `(define-global-var ,sub-name nil)))
+                           (:function
+                            (list
+                             `(defstruct (,sub-name (:include ,super-name))
+                                val)))))))))
 
 (defun parse-define-form (form)
   "Parse a COALTON:DEFINE form."

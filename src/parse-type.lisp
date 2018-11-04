@@ -9,34 +9,45 @@
 ;;;                 | <nullary type constructor>
 ;;;                 | (<type constructor> <type expr>*)
 
-(defun parse-type-expression (whole-expr)
+(defun parse-type-expression (whole-expr &key variable-assignments
+                                              extra-tycons)
   "Parse the type expression WHOLE-EXPR. Return two values:
 
 1. The parsed expression.
 
 2. An a-list of symbol -> TYVAR pairs.
+
+VARIABLE-ASSIGNMENTS is an alist of (SYMBOL TYVAR) pairs.
+
+EXTRA-TYCONS is a list of tycons that are perhaps not globally defined yet. These will be preferred over global definitions.
 "
   ;; Below, TABLE is a mapping from symbols to fresh type variables.
-  (let ((table (make-hash-table)))
-    (labels ((parse-variable (expr)
+  (let ((table (alexandria:alist-hash-table variable-assignments)))
+    (labels ((knownp (name)
+               (or (find name extra-tycons :key #'tycon-name)
+                   (tycon-knownp name)))
+             (find-it (name)
+               (or (find name extra-tycons :key #'tycon-name)
+                   (find-tycon name)))
+             (parse-variable (expr)
                (check-type expr symbol)
                (or (gethash expr table)
                    (setf (gethash expr table) (make-variable))))
 
              (parse-nullary-constructor (expr)
                (check-type expr symbol)
-               (unless (tycon-knownp expr)
+               (unless (knownp expr)
                  (error-parsing whole-expr "Unknown type constructor ~S" expr))
-               (tyapp (find-tycon expr)))
+               (tyapp (find-it expr)))
 
              (parse-application (expr)
                (destructuring-bind (tycon &rest args) expr
                  (unless (symbolp tycon)
                    (error-parsing whole-expr "Invalid part of type expression: ~S" tycon))
-                 (unless (tycon-knownp tycon)
+                 (unless (knownp tycon)
                    (error-parsing whole-expr "Unknown type constructor ~S" tycon))
                  (apply #'tyapp
-                        (find-tycon tycon)
+                        (find-it tycon)
                         (mapcar #'parse args))))
 
              (parse (expr)
@@ -46,7 +57,7 @@
                   (error-parsing whole-expr "Invalid type expression: ~S" expr))
 
                  (symbol
-                  (if (tycon-knownp expr)
+                  (if (knownp expr)
                       (parse-nullary-constructor expr)
                       (parse-variable expr)))
 

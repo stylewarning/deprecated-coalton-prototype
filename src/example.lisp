@@ -6,7 +6,7 @@
 
 ;;; Identity.
 (coalton
-  (declare identity (forall t (-> t t)))
+  (declare identity (-> t t))
   (define (identity x) x))
 
 ;;; Simple type definitions.
@@ -20,7 +20,7 @@
 ;;; The quintessential list.
 (coalton
   (define-type (List t)
-    (Nil)
+    Nil
     (Cons t List))
   
   (declare length (forall t (-> (List t) Integer)))
@@ -39,6 +39,12 @@
     (if (zerop x)
         False
         (evenp (- x 1)))))
+
+;;; Weird order of mutually recursive functions.
+(coalton
+  (define f (+ 1 (h 5)))
+  (define g (if (h true) 1 0))
+  (define (h x) x))
 
 ;;; Mutually recursive types.
 (coalton

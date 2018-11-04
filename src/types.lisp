@@ -31,6 +31,28 @@
 
 ;;; TY is forward declared in node.lisp
 
+#+ignore
+(defstruct quantifier
+  (arity 0 :type unsigned-byte :read-only t)
+  (constructor-function nil :type function :read-only t))
+
+#+ignore
+(defun instantiate (q &rest variables)
+  "Instantiate the quantifier Q with the type variables in VARIABLES. If a variable is NIL (which they are by default), construct a fresh type variable."
+  (check-type q quantifier)
+  (assert (<= (length variables) (quantifier-arity q)))
+  ;; Make sure the VARIABLES list matches the arity of our quantifier.
+  (setf variables (append variables (make-list (- (quantifier-arity q)
+                                                  (length variables))
+                                               :initial-element nil)))
+  ;; Fill in the types.
+  (setf variables (loop :for var :in variables
+                        :collect (etypecase var
+                                   (null (make-variable))
+                                   (ty   var))))
+  ;; Call the constructor.
+  (apply (quantifier-constructor-function q) variables))
+
 (defstruct (tyvar (:include ty)
                   (:constructor %make-tyvar))
   "A type variable."
