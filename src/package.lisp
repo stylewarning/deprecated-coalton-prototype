@@ -20,6 +20,7 @@
    #:progn
    #:match
    #:let
+   #:letrec
    #:if
    #:lisp))
 
