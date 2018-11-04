@@ -53,8 +53,7 @@
 
 ;; TODO: Multiple bindings!
 (define-node-type node-letrec
-  (var symbol)
-  (val node)
+  (bindings binding-list)
   (subexpr node))
 
 (define-node-type node-if

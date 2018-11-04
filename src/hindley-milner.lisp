@@ -17,7 +17,10 @@
 (defun set-add (set item)
   (adjoin item set :test 'equalp))
 
-(defun lookup-type (name env non-generic)
+(defun error-unknown-symbol (name)
+  (error-parsing name "Undefined symbol"))
+
+(defun lookup-type (name env non-generic &key (continue 'error-unknown-symbol))
   (alexandria:if-let ((var (assoc-find env name)))
     (fresh var non-generic)
     (if (var-knownp name)
@@ -25,7 +28,7 @@
           (or (entry-declared-type entry)
               (entry-derived-type entry)
               (error-parsing name "Couldn't determine type of known variable.")))
-        (error-parsing name "Undefined symbol"))))
+        (funcall continue name))))
 
 (defun derive-type (value)
   "Derive the type of the Coalton value expressed as a NODE."
@@ -67,6 +70,27 @@
                   (analyze subexpr env non-generic)))
 
                (node-letrec
+                (let* ((bindings (node-letrec-bindings expr))
+                       (subexpr (node-letrec-subexpr expr))
+                       (vars (mapcar #'car bindings))
+                       (tyvars (loop :repeat (length bindings) :collect (make-variable)))
+                       (gamma* (loop :with gamma := env
+                                     :for var :in vars
+                                     :for tyvar :in tyvars
+                                     :do (setf gamma (assoc-add gamma var tyvar))
+                                     :finally (return gamma)))
+                       (ng (loop :with ng := non-generic
+                                 :for tyvar :in tyvars
+                                 :do (setf ng (set-add ng tyvar))
+                                 :finally (return ng)))
+                       (vals (mapcar #'cdr bindings))
+                       (defn-tys (loop :for val :in vals
+                                       :collect (analyze val gamma* ng))))
+                  (loop :for tyvar :in tyvars
+                        :for defn-ty :in defn-tys
+                        :do (unify tyvar defn-ty))
+                  (analyze subexpr gamma* non-generic))
+                #+single-variable ; (LETREC VAR VAL SUBEXPR)
                 (let* ((var (node-letrec-var expr))
                        (val (node-letrec-val expr))
                        (subexpr (node-letrec-subexpr expr))

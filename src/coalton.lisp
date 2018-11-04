@@ -40,85 +40,63 @@
 ;;;             | (progn <expr> ...) ; sequence
 ;;;             | (lisp <type> <expr>)
 ;;;                                  ; Lisp escape
+;;;             | (letrec ((<variable> <expression>) ...) <expression>)
 ;;;
 ;;; TODO: Some syntax isn't accounted for:
 ;;;
-;;;          - LETREC
 ;;;          - Top-level syntax
 ;;;          - All of the desired atomic data
 ;;;          - Variable declarations
 ;;;          - Literal syntax for some constructors
 ;;;
 
-(defun compile-value-to-lisp (form)
-  "Compile the Coalton form FORM into Lisp code."
-  ;; XXX: Doesn't make use of type info yet!
-  (labels ((analyze (expr env)
-             (cond
-               ((atom expr)
-                (etypecase expr
-                  (null    (error-parsing expr "NIL is not allowed!"))
-                  (symbol  (analyze-variable expr env))
-                  (integer (analyze-atom expr env))))
-               ((alexandria:proper-list-p expr)
-                (alexandria:destructuring-case expr
-                  ((coalton:fn var subexpr)
-                   (analyze-abstraction var subexpr env))
-                  ((coalton:let bindings subexpr)
-                   (analyze-let bindings subexpr env))
-                  ((coalton:if test then else)
-                   (analyze-if test then else env))
-                  ((coalton:lisp type lisp-expr)
-                   (analyze-lisp type lisp-expr env))
-                  ((coalton:match expr &rest patterns)
-                   (analyze-match expr patterns env))
-                  ((coalton:progn &rest exprs)
-                   (analyze-sequence exprs env))
-                  ((t &rest rands)
-                   (analyze-application (first expr) rands env))))
-               (t (error-parsing expr "The expression is not a valid value expression."))))
+(defun compile-value-to-lisp (value)
+  "Compile the node VALUE into Lisp."
+  (check-type value node)
+  (labels ((analyze (expr)
+             (etypecase expr
+               (node-literal
+                (node-literal-value expr))
 
-           (analyze-atom (atom env)
-             (declare (ignore env))
-             ;; Just return the atom.
-             atom)
-           (analyze-variable (var env)
-             (declare (ignore env))
-             ;; Just return the variable.
-             ;;
-             ;; XXX: Do we have to special-case any variable? We can
-             ;; statically detect if it's not used. But so can the
-             ;; compiler.
-             var)
-           (analyze-abstraction (var subexpr env)
-             ;; XXX: a VAR with an &-name will cause breakage
-             `(cl:lambda (,var) ,(analyze subexpr env)))
-           (analyze-let (bindings subexpr env)
-             `(cl:let ,(loop :for (bind-var bind-val) :in bindings
-                             :collect `(,bind-var ,(analyze bind-val env)))
-                ,(analyze subexpr env)))
-           (analyze-if (test then else env)
-             `(cl:if ,(analyze test env)
-                     ,(analyze then env)
-                     ,(analyze else env)))
-           (analyze-lisp (type lisp-expr env)
-             (declare (ignore type env))
-             lisp-expr)
-           (analyze-match (expr patterns env)
-             (declare (ignore expr patterns env))
-             (error "TODO: unsupported"))
-           (analyze-sequence (exprs env)
-             `(progn
-                ,@(loop :for expr :in exprs
-                        :collect (analyze expr env))))
-           (analyze-application (rator rands env)
-             ;;; XXX: We should special-case for global function
-             ;;; symbols and call them in the Lisp-2 fashion.
-             `(cl:funcall ,(analyze rator env)
-                          ,@(loop :for rand :in rands :collect (analyze rand env)))))
-    (analyze form nil)))
+               (node-variable
+                (node-variable-name expr))
 
+               (node-abstraction
+                `(lambda  (,(node-abstraction-var expr))
+                   ,(analyze (node-abstraction-subexpr expr))))
 
+               (node-let
+                `(let ,(loop :for (var . val) :in (node-let-bindings expr)
+                             :collect `(,var ,(analyze val)))
+                   ,(analyze (node-let-subexpr expr))))
+
+               (node-letrec
+                ;; TODO: fixme
+                #+ignore
+                (let* ((var (node-letrec-var expr))
+                       (val (node-letrec-val expr))
+                       (subexpr (node-letrec-subexpr expr)))
+                  `(let (,var)
+                     (setf ,var ,(analyze val))
+                     ,(analyze subexpr))))
+
+               (node-if
+                `(if ,(analyze (node-if-test expr))
+                     ,(analyze (node-if-then expr))
+                     ,(analyze (node-if-else expr))))
+
+               (node-lisp
+                (node-lisp-form expr))
+
+               (node-sequence
+                `(progn
+                   ,@(mapcar #'analyze (node-sequence-exprs expr))))
+
+               (node-application
+                (let ((rator (analyze (node-application-rator expr)))
+                      (rands (mapcar #'analyze (node-application-rands expr))))
+                  `(funcall ,rator ,@rands))))))
+    (analyze value)))
 
 ;;; ## Compilation
 
@@ -233,18 +211,46 @@
 
 (defun parse-define-form-variable (var val)
   ;; The (DEFINE <var> <val>) case.
-  (declare (ignore val))
   (check-type var symbol)
-  (error "..."))
+  ;; XXX: Should this be LETREC too? Probably for something like F = x => ... F.
+  (values var (parse-form val)))
 
 (defun parse-define-form-function (fvar args val)
+  (check-type fvar symbol)
   ;; The (DEFINE (<fvar> . <args>) <val>) case.
-  (declare (ignore fvar args val))
-  (error "..."))
+  (values fvar (parse-form
+                `(coalton:letrec ,fvar
+                                 ,(if (null args)
+                                      val
+                                      (loop :with thing := val
+                                            :for var :in (reverse args)
+                                            :do (setf thing `(coalton:fn ,var ,thing))
+                                            :finally (return thing)))
+                                 ,fvar))))
 
+;;; TODO: make sure we can lexically shadow global bindings
 (defmethod compile-toplevel-special-form ((operator (eql 'coalton:define)) whole)
-  (declare (ignore whole))
-  )
+  (multiple-value-bind (name expr) (parse-define-form whole)
+    (cond
+      ((var-definedp name)
+       ;; XXX: Get this right. Re-typecheck everything?!
+       (let ((internal-name (entry-internal-name (var-info name))))
+         `(setf ,internal-name ,(compile-value-to-lisp expr))))
+      (t
+       (unless (var-knownp name)
+         ;; Declare the variable.
+         (forward-declare-variable name))
+       ;; Do some type inferencing.
+       (let ((inferred-type (derive-type expr))
+             (internal-name (entry-internal-name (var-info name))))
+         ;; FIXME check VAR-DECLARED-TYPE
+         ;; FIXME check VAR-DERIVED-TYPE
+         (setf (var-derived-type name)             inferred-type
+               (entry-source-form (var-info name)) whole
+               (entry-node (var-info name))        expr)
+         `(progn
+            (define-symbol-macro ,name ,internal-name)
+            (global-vars:define-global-var ,internal-name ,(compile-value-to-lisp expr))))))))
 
 
 ;;; Entry Point

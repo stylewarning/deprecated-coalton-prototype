@@ -3,9 +3,11 @@
 (in-package #:coalton-impl)
 
 (defstruct entry
+  internal-name
   declared-type
   derived-type
-  source-form)
+  source-form
+  node)
 
 (define-global-var **global-value-definitions**
   (make-hash-table :test 'eql)
@@ -22,6 +24,12 @@
       (error "Could not retrieve the type of ~S because it is unknown." var))
     val))
 
+(defun var-definedp (var)
+  "Is the var actually defined (as opposed to just declared)?"
+  (and (var-knownp var)
+       (entry-source-form (var-info var))
+       t))
+
 (defun (setf var-info) (new-value var)
   (check-type new-value entry)
   (check-type var symbol)
@@ -33,7 +41,8 @@
   (check-type var symbol)
   (when (var-knownp var)
     (error "Can't forward declare ~S, which is already known." var))
-  (setf (gethash var **global-value-definitions**) (make-entry)))
+  (setf (gethash var **global-value-definitions**)
+        (make-entry :internal-name (make-symbol (symbol-name var)))))
 
 (defun var-declared-type (var)
   (let ((info (var-info var)))

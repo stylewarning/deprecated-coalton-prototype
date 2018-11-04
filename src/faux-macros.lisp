@@ -48,6 +48,9 @@
 (define-coalton-editor-macro coalton:let (bindings &body form)
   "A lexical LET binding.")
 
+(define-coalton-editor-macro coalton:letrec (bindings &body form)
+  "A lexical, recursive LET binding.")
+
 (define-coalton-editor-macro coalton:if (test then else)
   "A conditional construct.")
 

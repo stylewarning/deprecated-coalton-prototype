@@ -19,8 +19,8 @@ This does not attempt to do any sort of analysis whatsoever. It is suitable for 
                    (parse-abstraction var subexpr))
                   ((coalton:let bindings subexpr)
                    (parse-let bindings subexpr))
-                  ((coalton:letrec var val subexpr)
-                   (parse-letrec var val subexpr))
+                  ((coalton:letrec bindings subexpr)
+                   (parse-letrec bindings subexpr))
                   ((coalton:if test then else)
                    (parse-if test then else))
                   ((coalton:lisp type lisp-expr)
@@ -47,9 +47,9 @@ This does not attempt to do any sort of analysis whatsoever. It is suitable for 
                              :collect (cons bind-var (parse bind-val)))
                        (parse subexpr)))
 
-           (parse-letrec (var val subexpr)
-             (node-letrec var
-                          (parse val)
+           (parse-letrec (bindings subexpr)
+             (node-letrec (loop :for (bind-var bind-val) :in bindings
+                                :collect (cons bind-var (parse bind-val)))
                           (parse subexpr)))
 
            (parse-if (test then else)
