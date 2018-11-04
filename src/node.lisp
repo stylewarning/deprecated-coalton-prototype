@@ -7,7 +7,8 @@
 ;;; Types are fully defined in types.lisp
 (defstruct (ty (:constructor nil)))
 
-(defstruct (node (:constructor nil)))
+(defstruct (node (:constructor nil))
+  (derived-type nil :type (or null ty)))
 
 (defun node-list-p (x)
   (and (alexandria:proper-list-p x)
@@ -48,6 +49,12 @@
 
 (define-node-type node-let
   (bindings binding-list)
+  (subexpr node))
+
+;; TODO: Multiple bindings!
+(define-node-type node-letrec
+  (var symbol)
+  (val node)
   (subexpr node))
 
 (define-node-type node-if

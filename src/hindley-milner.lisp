@@ -27,109 +27,92 @@
               (error-parsing name "Couldn't determine type of known variable.")))
         (error-parsing name "Undefined symbol"))))
 
-(defun derive-type (form)
-  "Derive the type of the Coalton value expression FORM."
+(defun derive-type (value)
+  "Derive the type of the Coalton value expressed as a NODE."
+  (check-type value node)
   (labels ((analyze (expr env non-generic)
-             (cond
-               ((atom expr)
-                (etypecase expr
-                  (null    (error-parsing expr "NIL is not allowed!"))
-                  (symbol  (analyze-variable expr env non-generic))
+             (setf (node-derived-type expr) (analyze-expr expr env non-generic)))
+
+           (analyze-expr (expr env non-generic)
+             (etypecase expr
+               (node-literal
+                (etypecase (node-literal-value expr)
                   (integer integer-type)))
-               ((alexandria:proper-list-p expr)
-                (alexandria:destructuring-case expr
-                  ((coalton:fn var subexpr)
-                   (analyze-abstraction var subexpr env non-generic))
-                  ((coalton:let bindings subexpr)
-                   (analyze-let bindings subexpr env non-generic))
-                  ((coalton:if test then else)
-                   (analyze-if test then else env non-generic))
-                  ((coalton:lisp type lisp-expr)
-                   (analyze-lisp type lisp-expr env non-generic))
-                  ((coalton:match expr &rest patterns)
-                   (analyze-match expr patterns env non-generic))
-                  ((coalton:progn &rest exprs)
-                   (analyze-sequence exprs env non-generic))
-                  ((t &rest rands)
-                   (analyze-application (first expr) rands env non-generic))))
-               (t (error-parsing expr "The expression is not a valid value expression."))))
 
-           #+ignore
-           (analyze-atom (atom env)
-             (declare (ignore env))
-             ;; Just return the atom.
-             atom)
+               (node-variable
+                ;; XXX: Check the global environment!!!
+                (lookup-type (node-variable-name expr) env non-generic))
 
-           (analyze-variable (var env non-generic)
-             ;; XXX: Check the global environment!!!
-             (lookup-type var env non-generic))
+               (node-abstraction
+                (let* ((var (node-abstraction-var expr))
+                       (subexpr (node-abstraction-subexpr expr))
+                       (var-ty (make-variable))
+                       (ret-ty (analyze subexpr
+                                        (assoc-add env var var-ty)
+                                        (set-add non-generic var-ty))))
+                  (make-function-type var-ty ret-ty)))
 
-           (analyze-abstraction (var subexpr env non-generic)
-             (let* ((var-ty (make-variable))
-                    (ret-ty (analyze subexpr
-                                     (assoc-add env var var-ty)
-                                     (set-add non-generic var-ty))))
-               (make-function-type var-ty ret-ty)))
+               (node-let
+                ;; Won't deal with dupe variables.
+                (let* ((bindings (node-let-bindings expr))
+                       (subexpr (node-let-subexpr expr))
+                       (vars (mapcar #'car bindings))
+                       (vals (mapcar #'cdr bindings))
+                       (val-tys (mapcar (lambda (val) (analyze val env non-generic)) vals)))
+                  ;; Build up the new type environment; just mutate the
+                  ;; existing ENV binding.
+                  (loop :for var :in vars
+                        :for val-ty :in val-tys
+                        :do (setf env (assoc-add env var val-ty)))
+                  (analyze subexpr env non-generic)))
 
-           (analyze-let (bindings subexpr env non-generic)
-             ;; Won't deal with dupe variables.
-             (let* ((vars (mapcar #'first bindings))
-                    (vals (mapcar #'second bindings))
-                    (val-tys (mapcar (lambda (val) (analyze val env non-generic)) vals)))
-               ;; Build up the new type environment; just mutate the
-               ;; existing ENV binding.
-               (loop :for var :in vars
-                     :for val-ty :in val-tys
-                     :do (setf env (assoc-add env var val-ty)))
-               (analyze subexpr env non-generic)))
-           
-           ;; TODO: LETREC!
-           #+ignore
-           (analyze-letrec (v defn body env non-generic)
-             (let* ((new-ty (make-variable))
-                    (new-env (assoc-add env v new-ty))
-                    (defn-ty (rec defn new-env (set-add non-generic new-ty))))
-               (unify new-ty defn-ty)
-               (rec body new-env non-generic)))
+               (node-letrec
+                (let* ((var (node-letrec-var expr))
+                       (val (node-letrec-val expr))
+                       (subexpr (node-letrec-subexpr expr))
+                       (new-ty (make-variable))
+                       (new-env (assoc-add env var new-ty))
+                       (defn-ty (analyze val new-env (set-add non-generic new-ty))))
+                  (unify new-ty defn-ty)
+                  (analyze subexpr new-env non-generic)))
 
-           (analyze-if (test then else env non-generic)
-             (let ((test-ty (analyze test env non-generic)))
-               (unify boolean-type test-ty)
-               (let ((then-ty (analyze then env non-generic))
-                     (else-ty (analyze else env non-generic)))
-                 (unify then-ty else-ty)
-                 then-ty)))
+               (node-if
+                (let ((test-ty (analyze (node-if-test expr) env non-generic)))
+                  (unify boolean-type test-ty)
+                  (let ((then-ty (analyze (node-if-then expr) env non-generic))
+                        (else-ty (analyze (node-if-else expr) env non-generic)))
+                    (unify then-ty else-ty)
+                    then-ty)))
 
-           (analyze-lisp (type lisp-expr env non-generic)
-             (declare (ignore lisp-expr env non-generic))
-             (parse-type-expression type))
+               (node-lisp
+                ;; Return the stated type at face value.
+                (node-lisp-type expr))
 
-           (analyze-match (expr patterns env non-generic)
-             (declare (ignore expr patterns env non-generic))
-             (error "can't type derive a MATCH!"))
+               (node-sequence
+                (let ((exprs (node-sequence-exprs expr)))
+                  (cond
+                    ((endp exprs)
+                     unit-type)
+                    ((endp (rest exprs))
+                     (analyze (first exprs) env non-generic))
+                    (t
+                     (let ((middle-exprs (butlast exprs))
+                           (last-expr (first (last exprs))))
+                       ;; Derive the types of all of the middle
+                       ;; expressions, ensuring they unify with UNIT.
+                       (loop :for mid-expr :in middle-exprs
+                             :for ty := (analyze mid-expr env non-generic)
+                             :do (unify unit-type ty))
+                       ;; Derive the type of the last expression.
+                       (analyze last-expr env non-generic))))))
 
-           (analyze-sequence (exprs env non-generic)
-             (cond
-               ((endp exprs)
-                unit-type)
-               ((endp (rest exprs))
-                (analyze (first exprs) env non-generic))
-               (t
-                (let ((middle-exprs (butlast exprs))
-                      (last-expr (first (last exprs))))
-                  ;; Derive the types of all of the middle
-                  ;; expressions, ensuring they unify with UNIT.
-                  (loop :for mid-expr :in middle-exprs
-                        :for ty := (analyze mid-expr env non-generic)
-                        :do (unify unit-type ty))
-                  ;; Derive the type of the last expression.
-                  (analyze last-expr env non-generic)))))
-
-           (analyze-application (rator rands env non-generic)
-             (assert (= 1 (length rands)))
-             (let* ((fun-ty (analyze rator env non-generic))
-                    (arg-ty (analyze (first rands) env non-generic))
-                    (ret-ty (make-variable)))
-               (unify (make-function-type arg-ty ret-ty) fun-ty)
-               ret-ty)))
-    (analyze form nil nil)))
+               (node-application
+                (let ((rator (node-application-rator expr))
+                      (rands (node-application-rands expr)))
+                  (assert (= 1 (length rands)))
+                  (let* ((fun-ty (analyze rator env non-generic))
+                         (arg-ty (analyze (first rands) env non-generic))
+                         (ret-ty (make-variable)))
+                    (unify (make-function-type arg-ty ret-ty) fun-ty)
+                    ret-ty))))))
+    (analyze value nil nil)))
