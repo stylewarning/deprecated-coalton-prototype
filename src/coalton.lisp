@@ -249,6 +249,8 @@
       ;; about. Let's start with classes.
       `(progn
          ;; Define types. Create the superclass.
+         ;;
+         ;; TODO: handle special case of 1 ctor.
          ,(if (endp ctors)
               `(deftype ,tycon-name () nil)
               `(defclass ,tycon-name ()

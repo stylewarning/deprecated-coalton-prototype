@@ -23,8 +23,8 @@
                (:file "global-environment")
                (:file "hindley-milner")
                (:file "coalton")
-               (:file "forward-declarations")
-               (:file "faux-macros")))
+               (:file "faux-macros")
+               (:file "library")))
 
 (asdf:defsystem #:coalton/tests
   :description "Tests for COALTON."

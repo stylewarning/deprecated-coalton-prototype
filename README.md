@@ -11,80 +11,84 @@ See the [latest thoughts](thoughts.md).
 
 ## Examples
 
-Here are some transcripts of neat things that sort of work.
+Here are some transcripts of neat things that sort of work. Check out
+the [library](src/library.lisp) for example code that the following
+depends on.
 
-Defining a new ADT.
+First we will load the system and get into `COALTON-USER`. Note that
+this package currently does not `:USE` the `COMMON-LISP` package, so
+you must qualify symbols manually.
+
 ```
-COALTON-IMPL> (coalton:coalton
-                (coalton:define-type (Either a b)
-                  (Left a)
-                  (Right b)))
-EITHER
+CL-USER> (ql:quickload :coalton)
+...
+CL-USER> (in-package :coalton-user)
+#<COMMON-LISP:PACKAGE "COALTON-USER">
+COALTON-USER>
 ```
 
-We can use this ADT from Lisp.
+We already have a `Maybe` AST defined in the library. We can
+immediately construct these values in Common Lisp.
 ```
-COALTON-IMPL> (list (left 5) (right (left 1)))
-(#<LEFT {100C5C2FC3}> #<RIGHT {100C63D433}>)
-COALTON-IMPL> (describe (first *))
-#<LEFT {100C686733}>
+COALTON-USER> (cl:list (Just 5) Nothing Nothing)
+(#<JUST {100B47F7F3}> #<NOTHING {100B0481D3}> #<NOTHING {100B0481D3}>)
+COALTON-USER> (cl:describe (cl:first cl:*))
+#<JUST {100B47F7F3}>
   [standard-object]
 
 Slots with :INSTANCE allocation:
-  VALUE                          = 5
+  VALUE                          = #(5)
+; No value
+COALTON-USER> cl::(eq (second *) (third *))
+COMMON-LISP:T
 ```
 
 We can define a type-safe function `gg`.
 ```
-COALTON-IMPL> (coalton:coalton
-                (coalton:define (gg x) (coalton:if x (left 1) (right x))))
+COALTON-USER> (coalton
+                (define (gg x) (if x (left 1) (right x))))
 GG
 ```
 
 And we can use `gg` from Lisp.
 ```
-COALTON-IMPL> (funcall gg t)
-#<LEFT {100C681223}>
+COALTON-USER> (cl:funcall gg cl:t)
+#<LEFT {100B89E863}>
 ```
 
-We can inspect what Coalton inferred the type of `gg` to be:
+We can inspect what Coalton inferred the type of `gg` to be. We use
+the package `COALTON-IMPL` to access this functionality.
 ```
-COALTON-IMPL> (unparse-type (var-derived-type 'gg))
-(COALTON:-> COALTON:BOOLEAN (EITHER COALTON:INTEGER COALTON:BOOLEAN))
-```
-
-Defining a homogeneous list type.
-```
-COALTON-IMPL> (coalton:coalton
-                (coalton:define-type (Liszt t)
-                  Knil
-                  (Kons t (Liszt t))))
-LISZT
+COALTON-USER> (coalton-impl::unparse-type
+               (coalton-impl::var-derived-type 'gg))
+(-> BOOLEAN (EITHER INTEGER BOOLEAN))
 ```
 
-As usual, we can construct the values in Lisp.
+The Coalton library defines `Liszt`, whose name will surely
+change. It's a homogeneous list type, and as usual, we can construct
+values in Lisp.
 ```
-COALTON-IMPL> (kons 1 (kons 2 (kons 3 knil)))
-#<KONS {1003E5BD43}>
+COALTON-USER> (Kons 1 (Kons 2 (Kons 3 Knil)))
+#<KONS {100B9B54A3}>
 ```
 
 The type inferencer will deduce the type correctly.
 ```
-COALTON-IMPL> (unparse-type
-               (derive-type
-                (parse-form
+COALTON-USER> (coalton-impl::unparse-type
+               (coalton-impl::derive-type
+                (coalton-impl::parse-form
                  '(Kons (Left 1) (Kons (Right 2) (Kons (Left 3) Knil))))))
-(LISZT (EITHER COALTON:INTEGER COALTON:INTEGER))
+(LISZT (EITHER INTEGER INTEGER))
 ```
 
 And it will also catch errors.
 ```
-COALTON-IMPL> (unparse-type
-               (derive-type
-                (parse-form
-                 '(Kons 1 (Kons 2 (Kons 3 4))))))
+COALTON-USER> (coalton-impl::unparse-type
+               (coalton-impl::derive-type
+                (coalton-impl::parse-form
+                 '(Kons 1 2))))
 
-Type error: Type mismatch: COALTON:INTEGER and (LISZT COALTON:INTEGER)
+Type error: Type mismatch: INTEGER and (LISZT INTEGER)
    [Condition of type SIMPLE-ERROR]
 
 Restarts:

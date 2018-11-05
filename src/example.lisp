@@ -4,37 +4,6 @@
 
 (in-package #:coalton)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Works ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;; Identity.
-(coalton
-  (declare identity (-> t t))
-  (define (identity x) x))
-
-;;; Simple type definitions.
-(coalton
-  (define-type Void)
-
-  (define-type Unit
-    Singleton)
-
-  (define-type Bool
-    True
-    False)
-
-  (define-type (Maybe t)
-    Nothing
-    (Just t))
-
-  (define-type (Liszt t)
-    Knil
-    (Kons t (Liszt t)))
-
-  (define-type (Either a b)
-    (Left a)
-    (Right b)))
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;; Does Not Work ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; Simple pattern matching.
