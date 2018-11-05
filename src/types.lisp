@@ -6,10 +6,17 @@
 ;;; constructor for a *type*! Get with the program!
 (defstruct tycon
   "A constructor for type applications."
-  (name (required 'name) :type symbol        :read-only t)
-  (arity 0               :type unsigned-byte :read-only t)
-  ;; TODO: Add the value constructors.
-  )
+  (name (required 'name) :type symbol                 :read-only t)
+  (arity 0               :type unsigned-byte          :read-only t)
+  ;; A list of (CONSTRUCTOR-NAME . PREDICATE-NAME) pairs.
+  ;;
+  ;; The CONSTRUCTOR-NAME names a known function that constructs a
+  ;; value of TYCON type. The PREDICATE-NAME also names a known
+  ;; function that tests whether an object is this particular summand.
+  ;;
+  ;; This isn't read-only because we might set it later. It would be
+  ;; nice to make it read-only though.
+  (constructors nil      :type alexandria:proper-list))
 
 ;;; TODO: figure out type aliases.
 (define-global-var **type-definitions** (make-hash-table :test 'eql)
@@ -27,6 +34,13 @@
   (check-type tycon-name symbol)
   (or (gethash tycon-name **type-definitions**)
       (error "Couldn't find definition of tycon ~S" tycon-name)))
+
+(defun (setf find-tycon) (new-value tycon-name)
+  (check-type tycon-name symbol)
+  (check-type new-value tycon)
+  (when (tycon-knownp tycon-name)
+    (warn "Clobbering tycon ~S" tycon-name))
+  (setf (gethash tycon-name **type-definitions**) new-value))
 
 
 ;;; TY is forward declared in node.lisp
@@ -123,8 +137,9 @@
 (defun is-generic (v non-generic)
   (not (occurs-in v non-generic)))
 
-(defun fresh (ty non-generic)
-  ;; XXX make correct
+(defun fresh (ty &optional (non-generic nil))
+  "Take a type, and substitute free variables with fresh ones."
+  ;; XXX: Verify this hash table is correct.
   (let ((table (make-hash-table :test 'equalp)))
     (labels ((freshrec (tp)
                (let ((ptp (prune tp)))
@@ -141,7 +156,7 @@
                     (apply #'tyapp
                            (tyapp-constructor ptp)
                            (mapcar #'freshrec (tyapp-types ptp))))))))
-      (freshrec ty))))
+      (values (freshrec ty) (alexandria:hash-table-alist table)))))
 
 (defun assoc-find (env name)
   (let ((entry (assoc name env)))

@@ -25,9 +25,9 @@
     (fresh var non-generic)
     (if (var-knownp name)
         (let ((entry (var-info name)))
-          (or (entry-declared-type entry)
-              (entry-derived-type entry)
-              (error-parsing name "Couldn't determine type of known variable.")))
+          (fresh (or (entry-declared-type entry)
+                     (entry-derived-type entry)
+                     (error-parsing name "Couldn't determine type of known variable."))))
         (funcall continue name))))
 
 (defun derive-type (value)

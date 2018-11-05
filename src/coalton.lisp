@@ -211,26 +211,41 @@
                               (parse-type-expression argty :variable-assignments fvs)
                               ty))
                        constructors)))))
-          (values tycon ty constructors fvs))))))
+          (values tycon ty constructors))))))
 
-;;; XXX FIXME: consider using other types instead of structs.
 (defmethod compile-toplevel-special-form ((operator (eql 'coalton:define-type)) whole)
-  (multiple-value-bind (tycon ty ctors fvs) (parse-define-type-form whole)
-    (declare (ignore ty fvs))
-    (let ((super-name (tycon-name tycon)))
+  (multiple-value-bind (tycon generic-ty ctors) (parse-define-type-form whole)
+    (let* ((ctor-names (mapcar #'second ctors))
+           (pred-names (loop :for ctor-name :in ctor-names
+                             :collect (alexandria:format-symbol nil "~A-P" ctor-name))))
+      ;; Record the ctors and predicates.
+      (setf (tycon-constructors tycon) (mapcar #'cons ctor-names pred-names))
+
+      ;; Make the tycon known. We clobber it if it exists.
+      (setf (find-tycon (tycon-name tycon)) tycon)
+
+      ;; Declare the types of the new things.
+      (loop :for (_ name ty) :in ctors
+            :do (unless (var-knownp name)
+                  (forward-declare-variable name))
+                (setf (var-declared-type name) ty))
+
+      ;; Declare the predicates
+      (loop :with pred-ty := (make-function-type generic-ty
+                                                 (find-tycon 'coalton:boolean))
+            :for (_ . pred-name) :in (tycon-constructors tycon)
+            :do (unless (var-knownp pred-name)
+                  (forward-declare-variable pred-name))
+                (setf (var-declared-type pred-name) pred-ty))
+      ;; Compile into sensible Lisp.
+      ;;
+      ;; TODO
       `(progn
-         (defstruct (,super-name (:constructor nil)))
-         ,@(loop :for (kind sub-name ty) :in (mapcar #'first ctors)
-                 :append (ecase kind
-                           (:variable
-                            (list
-                             `(defstruct (,sub-name (:include ,super-name)))
-                             ;; XXX FIXME
-                             `(define-global-var ,sub-name nil)))
-                           (:function
-                            (list
-                             `(defstruct (,sub-name (:include ,super-name))
-                                val)))))))))
+         ;; Define types
+         ;; Define constructors
+         ;; Define predicates
+         )
+      nil)))
 
 (defun parse-define-form (form)
   "Parse a COALTON:DEFINE form."

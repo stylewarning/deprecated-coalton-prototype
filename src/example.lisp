@@ -19,9 +19,9 @@
 
 ;;; The quintessential list.
 (coalton
-  (define-type (List t)
-    Nil
-    (Cons t List))
+  (define-type (Liszt t)
+    Knil
+    (Kons t List))
   
   (declare length (forall t (-> (List t) Integer)))
   (define (length x)
