@@ -4,6 +4,8 @@
 
 (in-package #:coalton)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Works ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;;; Identity.
 (coalton
   (declare identity (-> t t))
@@ -11,18 +13,32 @@
 
 ;;; Simple type definitions.
 (coalton
-  (define-type Unit)
-  
-  (define-type Boolean
-    True
-    False))
+  (define-type Void)
 
-;;; The quintessential list.
-(coalton
+  (define-type Unit
+    Singleton)
+
+  (define-type Bool
+    True
+    False)
+
+  (define-type (Maybe t)
+    Nothing
+    (Just t))
+
   (define-type (Liszt t)
     Knil
-    (Kons t List))
-  
+    (Kons t (Liszt t)))
+
+  (define-type (Either a b)
+    (Left a)
+    (Right b)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;; Does Not Work ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; Simple pattern matching.
+(coalton
   (declare length (forall t (-> (List t) Integer)))
   (define (length x)
     (match x

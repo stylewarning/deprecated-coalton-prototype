@@ -7,7 +7,9 @@
   :depends-on (#:alexandria
                #:global-vars
                #:trivial-garbage
-               #:optima)
+               #:optima
+               #:abstract-classes
+               #:singleton-classes)
   :in-order-to ((asdf:test-op (asdf:test-op #:coalton/tests)))
   :pathname "src/"
   :serial t

@@ -193,7 +193,7 @@
     (setf type (alexandria:ensure-list type))
     (destructuring-bind (tycon-name &rest tyvar-names) type
       (when (tycon-knownp tycon-name)
-        (error "Already defined tycon: ~S" tycon-name))
+        (cerror "Clobber the tycon." "Already defined tycon: ~S" tycon-name))
       (assert (every #'symbolp tyvar-names))
       (let* ((arity (length tyvar-names))
              (tycon (make-tycon :name tycon-name :arity arity))
@@ -215,14 +215,15 @@
 
 (defmethod compile-toplevel-special-form ((operator (eql 'coalton:define-type)) whole)
   (multiple-value-bind (tycon generic-ty ctors) (parse-define-type-form whole)
-    (let* ((ctor-names (mapcar #'second ctors))
+    (let* ((tycon-name (tycon-name tycon))
+           (ctor-names (mapcar #'second ctors))
            (pred-names (loop :for ctor-name :in ctor-names
                              :collect (alexandria:format-symbol nil "~A-P" ctor-name))))
       ;; Record the ctors and predicates.
       (setf (tycon-constructors tycon) (mapcar #'cons ctor-names pred-names))
 
       ;; Make the tycon known. We clobber it if it exists.
-      (setf (find-tycon (tycon-name tycon)) tycon)
+      (setf (find-tycon tycon-name) tycon)
 
       ;; Declare the types of the new things.
       (loop :for (_ name ty) :in ctors
@@ -231,21 +232,54 @@
                 (setf (var-declared-type name) ty))
 
       ;; Declare the predicates
-      (loop :with pred-ty := (make-function-type generic-ty
-                                                 (find-tycon 'coalton:boolean))
+      (loop :with pred-ty := (make-function-type generic-ty boolean-type)
             :for (_ . pred-name) :in (tycon-constructors tycon)
             :do (unless (var-knownp pred-name)
                   (forward-declare-variable pred-name))
                 (setf (var-declared-type pred-name) pred-ty))
       ;; Compile into sensible Lisp.
       ;;
-      ;; TODO
+      ;; TODO: Structs? Vectors? Classes? This should be thought
+      ;; about. Let's start with classes.
       `(progn
-         ;; Define types
+         ;; Define types. Create the superclass.
+         ,(if (endp ctors)
+              `(deftype ,tycon-name () nil)
+              `(defclass ,tycon-name ()
+                 ()
+                 (:metaclass abstract-class)))
+
+         ;; Create all of the subclasses.
+         ,@(loop :for (kind name _) :in ctors
+                 :collect (ecase kind
+                            (:variable
+                             `(defclass ,name (,tycon-name)
+                                ()
+                                (:metaclass singleton-class)))
+                            (:function
+                             `(defclass ,name (,tycon-name)
+                                ((value :initarg :value))
+                                (:metaclass final-class)))))
+
          ;; Define constructors
+         ,@(loop :for (kind name _) :in ctors
+                 :append (ecase kind
+                           ;; TODO: Should we emulate a global
+                           ;; lexical? The type inference assumes as
+                           ;; much.
+                           (:variable
+                            (list
+                             `(define-global-var* ,name (make-instance ',name))))
+                            (:function
+                             (list
+                              `(defun ,name (value)
+                                 (make-instance ',name :value value))
+                              `(define-global-var* ,name #',name)))))
          ;; Define predicates
-         )
-      nil)))
+         ,@(loop :for (ctor-name . pred-name) :in (tycon-constructors tycon)
+                 :collect `(defun ,pred-name (object)
+                             (typep object ',ctor-name)))
+         ',tycon-name))))
 
 (defun parse-define-form (form)
   "Parse a COALTON:DEFINE form."
@@ -286,13 +320,13 @@
   (check-type fvar symbol)
   ;; The (DEFINE (<fvar> . <args>) <val>) case.
   (values fvar (parse-form
-                `(coalton:letrec ,fvar
-                                 ,(if (null args)
-                                      val
-                                      (loop :with thing := val
-                                            :for var :in (reverse args)
-                                            :do (setf thing `(coalton:fn ,var ,thing))
-                                            :finally (return thing)))
+                `(coalton:letrec ((,fvar
+                                   ,(if (null args)
+                                        val
+                                        (loop :with thing := val
+                                              :for var :in (reverse args)
+                                              :do (setf thing `(coalton:fn ,var ,thing))
+                                              :finally (return thing)))))
                                  ,fvar))))
 
 ;;; TODO: make sure we can lexically shadow global bindings
@@ -317,7 +351,8 @@
                (entry-node (var-info name))        expr)
          `(progn
             (define-symbol-macro ,name ,internal-name)
-            (global-vars:define-global-var ,internal-name ,(compile-value-to-lisp expr))))))))
+            (global-vars:define-global-var ,internal-name ,(compile-value-to-lisp expr))
+            ',name))))))
 
 
 ;;; Entry Point

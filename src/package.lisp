@@ -34,4 +34,6 @@
   (:import-from #:global-vars
                 #:define-global-var
                 #:define-global-var*)
+  (:import-from #:abstract-classes #:abstract-class #:final-class)
+  (:import-from #:singleton-classes #:singleton-class)
   (:export))
