@@ -41,14 +41,19 @@ EXTRA-TYCONS is a list of tycons that are perhaps not globally defined yet. Thes
                (tyapp (find-it expr)))
 
              (parse-application (expr)
-               (destructuring-bind (tycon &rest args) expr
-                 (unless (symbolp tycon)
-                   (error-parsing whole-expr "Invalid part of type expression: ~S" tycon))
-                 (unless (knownp tycon)
-                   (error-parsing whole-expr "Unknown type constructor ~S" tycon))
-                 (apply #'tyapp
-                        (find-it tycon)
-                        (mapcar #'parse args))))
+               (if (eq 'coalton:-> (first expr))
+                   (destructuring-bind (arrow from to) expr
+                     (declare (ignore arrow))
+                     (tyfun (mapcar #'parse (alexandria:ensure-list from))
+                            (parse to)))
+                   (destructuring-bind (tycon &rest args) expr
+                     (unless (symbolp tycon)
+                       (error-parsing whole-expr "Invalid part of type expression: ~S" tycon))
+                     (unless (knownp tycon)
+                       (error-parsing whole-expr "Unknown type constructor ~S" tycon))
+                     (apply #'tyapp
+                            (find-it tycon)
+                            (mapcar #'parse args)))))
 
              (parse (expr)
                (typecase expr

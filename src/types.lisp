@@ -52,23 +52,24 @@
   (instance nil :type (or null ty)     :read-only nil)
   (name     nil :type (or null symbol) :read-only nil))
 
-(defun type-list-p (thing)
-  (and (alexandria:proper-list-p thing)
-       (every (lambda (x) (typep x 'ty)) thing)))
-
-(deftype type-list ()
-  '(satisfies type-list-p))
-
 (defstruct (tyapp (:include ty)
                   (:constructor tyapp (constructor &rest types)))
   "A type application. (Note that this could be the application of a 0-arity constructor.)"
   (constructor  nil :type tycon     :read-only t)
   (types        nil :type type-list :read-only t))
 
+;; We have a special constructor for functions because we handle
+;; multi-argument functions without a separate tuple type.
+(defstruct (tyfun (:include ty)
+                  (:constructor tyfun (from to)))
+  "A function type."
+  (from nil :type type-list :read-only t)
+  (to   nil :type ty        :read-only t))
+
 (defun tyapp-name (tyapp)
   (tycon-name (tyapp-constructor tyapp)))
 
-#+sbcl (declaim (sb-ext:freeze-type ty tyvar tyapp))
+#+sbcl (declaim (sb-ext:freeze-type ty tyvar tyapp tyfun))
 
 (defvar *next-variable-id* 0)
 (defun make-variable ()
@@ -85,10 +86,19 @@
      (if (tyvar-instance ty)
          (unparse-type (tyvar-instance ty))
          (variable-name ty)))
+
     (tyapp
      (if (null (tyapp-types ty))
          (tyapp-name ty)
-         (list* (tyapp-name ty) (mapcar #'unparse-type (tyapp-types ty)))))))
+         (list* (tyapp-name ty) (mapcar #'unparse-type (tyapp-types ty)))))
+    
+    (tyfun
+     (let ((from (mapcar #'unparse-type (tyfun-from ty)))
+           (to (unparse-type (tyfun-to ty))))
+       (cond
+         ((endp from)        `(coalton:-> () ,to))
+         ((endp (rest from)) `(coalton:-> ,(first from) ,to))
+         (t                  `(coalton:-> ,from ,to)))))))
 
 (defun prune (ty)
   (etypecase ty
@@ -97,7 +107,11 @@
        (if (null instance)
            ty
            (setf (tyvar-instance ty) (prune instance)))))
+
     (tyapp
+     ty)
+
+    (tyfun
      ty)))
 
 (defun occurs-in-type (v t2)
@@ -107,6 +121,7 @@
         t
         (typecase pruned-t2
           (tyapp (occurs-in v (tyapp-types pruned-t2)))
+          (tyfun (occurs-in v (cons (tyfun-to pruned-t2) (tyfun-from pruned-t2))))
           (otherwise nil)))))
 
 (defun occurs-in (ty types)
@@ -133,7 +148,10 @@
                    (tyapp
                     (apply #'tyapp
                            (tyapp-constructor ptp)
-                           (mapcar #'freshrec (tyapp-types ptp))))))))
+                           (mapcar #'freshrec (tyapp-types ptp))))
+                   (tyfun
+                    (tyfun (mapcar #'freshrec (tyfun-from ptp))
+                           (freshrec (tyfun-to ptp))))))))
       (values (freshrec ty) (alexandria:hash-table-alist table)))))
 
 (defun assoc-find (env name)
@@ -150,15 +168,20 @@
          (when (occurs-in-type pty1 pty2)
            (error-typing "Attempting to infinitely recurse into unification."))
          (setf (tyvar-instance pty1) pty2)))
-      ((and (tyapp-p pty1)
-            (tyvar-p pty2))
+      ((tyvar-p pty2)
        (unify pty2 pty1))
+      ((and (tyfun-p pty1)
+            (tyfun-p pty2))
+       (let ((arity-1 (length (tyfun-from pty1)))
+             (arity-2 (length (tyfun-from pty2))))
+         (unless (= arity-1 arity-2)
+           (error-typing "Type mismatch (mismatched arities of ~D and ~D)" arity-1 arity-2))
+         (mapc #'unify (tyfun-from pty1) (tyfun-from pty2))
+         (unify (tyfun-to pty1) (tyfun-to pty2))))
       ((and (tyapp-p pty1)
             (tyapp-p pty2))
-       (let ((name1  (tyapp-name pty1))
-             (types1 (tyapp-types pty1))
-             (name2  (tyapp-name pty2))
-             (types2 (tyapp-types pty2)))
+       (let ((name1 (tyapp-name pty1)) (types1 (tyapp-types pty1))
+             (name2 (tyapp-name pty2)) (types2 (tyapp-types pty2)))
          (when (or (not (eq name1 name2))
                    (not (= (length types1) (length types2))))
              (error-typing "Type mismatch: ~S and ~S"
@@ -166,5 +189,7 @@
                            (unparse-type pty2)))
          (mapc #'unify types1 types2)))
       (t
-       (error "Unreachable."))))
+       (error-typing "Type mismatch: ~S and ~S"
+                     (unparse-type ty1)
+                     (unparse-type ty2)))))
   nil)

@@ -14,8 +14,18 @@
                        (rec (rest current-assoc) (cons entry new-assoc) nil))))))
     (rec env nil nil)))
 
+(defun assoc-add* (env names vals)
+  (loop :for name :in names
+        :for val :in vals
+        :do (setf env (assoc-add env name val))
+        :finally (return env)))
+
 (defun set-add (set item)
   (adjoin item set :test 'equalp))
+
+(defun set-add* (set items)
+  (dolist (item items set)
+    (setf set (set-add set item))))
 
 (defun error-unknown-symbol (name)
   (error-parsing name "Undefined symbol"))
@@ -47,13 +57,14 @@
                 (lookup-type (node-variable-name expr) env non-generic))
 
                (node-abstraction
-                (let* ((var (node-abstraction-var expr))
+                (let* ((vars (node-abstraction-vars expr))
+                       (arity (length vars))
                        (subexpr (node-abstraction-subexpr expr))
-                       (var-ty (make-variable))
+                       (var-tys (loop :repeat arity :collect (make-variable)))
                        (ret-ty (analyze subexpr
-                                        (assoc-add env var var-ty)
-                                        (set-add non-generic var-ty))))
-                  (make-function-type var-ty ret-ty)))
+                                        (assoc-add* env vars var-tys)
+                                        (set-add* non-generic var-tys))))
+                  (make-function-type var-tys ret-ty)))
 
                (node-let
                 ;; Won't deal with dupe variables.
@@ -133,10 +144,10 @@
                (node-application
                 (let ((rator (node-application-rator expr))
                       (rands (node-application-rands expr)))
-                  (assert (= 1 (length rands)))
-                  (let* ((fun-ty (analyze rator env non-generic))
-                         (arg-ty (analyze (first rands) env non-generic))
-                         (ret-ty (make-variable)))
-                    (unify (make-function-type arg-ty ret-ty) fun-ty)
+                  (let ((fun-ty  (analyze rator env non-generic))
+                        (arg-tys (loop :for rand :in rands
+                                       :collect (analyze rand env non-generic)))
+                        (ret-ty  (make-variable)))
+                    (unify (make-function-type arg-tys ret-ty) fun-ty)
                     ret-ty))))))
     (analyze value nil nil)))

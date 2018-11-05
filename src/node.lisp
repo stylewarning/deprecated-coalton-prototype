@@ -7,6 +7,13 @@
 ;;; Types are fully defined in types.lisp
 (defstruct (ty (:constructor nil)))
 
+(defun type-list-p (thing)
+  (and (alexandria:proper-list-p thing)
+       (every (lambda (x) (typep x 'ty)) thing)))
+
+(deftype type-list ()
+  '(satisfies type-list-p))
+
 (defstruct (node (:constructor nil))
   (derived-type nil :type (or null ty)))
 
@@ -24,6 +31,13 @@
 (deftype binding-list ()
   `(satisfies binding-list-p))
 
+(defun symbol-list-p (x)
+  (and (alexandria:proper-list-p x)
+       (every #'symbolp x)))
+
+(deftype symbol-list ()
+  `(satisfies symbol-list-p))
+
 (defmacro define-node-type (name &body slots)
   (multiple-value-bind (slots decls doc) (alexandria:parse-body slots :documentation t)
     (declare (ignore decls))
@@ -32,6 +46,9 @@
        ,@(if (null doc) nil (list doc))
        ,@(loop :for (slot-name slot-type) :in slots
                :collect `(,slot-name nil :type ,slot-type :read-only t)))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;; The types of nodes ;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-node-type node-literal
   (value t))
@@ -44,7 +61,7 @@
   (rands node-list))
 
 (define-node-type node-abstraction
-  (var symbol)
+  (vars symbol-list)
   (subexpr node))
 
 (define-node-type node-let

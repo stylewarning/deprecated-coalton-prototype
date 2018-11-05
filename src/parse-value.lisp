@@ -15,8 +15,8 @@ This does not attempt to do any sort of analysis whatsoever. It is suitable for 
                   (integer (parse-atom expr))))
                ((alexandria:proper-list-p expr)
                 (alexandria:destructuring-case expr
-                  ((coalton:fn var subexpr)
-                   (parse-abstraction var subexpr))
+                  ((coalton:fn vars subexpr)
+                   (parse-abstraction vars subexpr))
                   ((coalton:let bindings subexpr)
                    (parse-let bindings subexpr))
                   ((coalton:letrec bindings subexpr)
@@ -25,8 +25,6 @@ This does not attempt to do any sort of analysis whatsoever. It is suitable for 
                    (parse-if test then else))
                   ((coalton:lisp type lisp-expr)
                    (parse-lisp type lisp-expr))
-                  ((coalton:match expr &rest patterns)
-                   (parse-match expr patterns))
                   ((coalton:progn &rest exprs)
                    (parse-sequence exprs))
                   ((t &rest rands)
@@ -39,8 +37,8 @@ This does not attempt to do any sort of analysis whatsoever. It is suitable for 
            (parse-variable (var)
              (node-variable var))
 
-           (parse-abstraction (var subexpr)
-             (node-abstraction var (parse subexpr)))
+           (parse-abstraction (vars subexpr)
+             (node-abstraction vars (parse subexpr)))
 
            (parse-let (bindings subexpr)
              (node-let (loop :for (bind-var bind-val) :in bindings
@@ -59,10 +57,6 @@ This does not attempt to do any sort of analysis whatsoever. It is suitable for 
 
            (parse-lisp (type lisp-expr)
              (node-lisp (parse-type-expression type) (parse lisp-expr)))
-
-           (parse-match (expr patterns)
-             (declare (ignore expr patterns))
-             (error "TODO: unsupported"))
 
            (parse-sequence (exprs)
              (node-sequence (loop :for expr :in exprs :collect (parse expr))))

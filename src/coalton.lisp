@@ -62,8 +62,10 @@
                 (node-variable-name expr))
 
                (node-abstraction
-                `(lambda  (,(node-abstraction-var expr))
-                   ,(analyze (node-abstraction-subexpr expr))))
+                (let ((vars (node-abstraction-vars expr)))
+                  `(lambda  (,@vars)
+                     (declare (ignorable ,@vars))
+                     ,(analyze (node-abstraction-subexpr expr)))))
 
                (node-let
                 `(let ,(loop :for (var . val) :in (node-let-bindings expr)
@@ -320,13 +322,7 @@
   (check-type fvar symbol)
   ;; The (DEFINE (<fvar> . <args>) <val>) case.
   (values fvar (parse-form
-                `(coalton:letrec ((,fvar
-                                   ,(if (null args)
-                                        val
-                                        (loop :with thing := val
-                                              :for var :in (reverse args)
-                                              :do (setf thing `(coalton:fn ,var ,thing))
-                                              :finally (return thing)))))
+                `(coalton:letrec ((,fvar (coalton:fn ,args ,val)))
                                  ,fvar))))
 
 ;;; TODO: make sure we can lexically shadow global bindings

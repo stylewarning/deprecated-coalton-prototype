@@ -6,9 +6,7 @@
 
 (defun make-function-type (from to)
   "Make a function type mapping FROM to TO. Equivalent to (-> FROM TO)."
-  (check-type from ty)
-  (check-type to ty)
-  (tyapp (find-tycon 'coalton:->) from to))
+  (tyfun (alexandria:ensure-list from) to))
 
 (define-type-constructor coalton:integer 0)
 (define-global-var* integer-type (tyapp (find-tycon 'coalton:integer)))
