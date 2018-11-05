@@ -58,6 +58,9 @@
   (constructor  nil :type tycon     :read-only t)
   (types        nil :type type-list :read-only t))
 
+(defun tyapp-name (tyapp)
+  (tycon-name (tyapp-constructor tyapp)))
+
 ;; We have a special constructor for functions because we handle
 ;; multi-argument functions without a separate tuple type.
 (defstruct (tyfun (:include ty)
@@ -66,8 +69,9 @@
   (from nil :type type-list :read-only t)
   (to   nil :type ty        :read-only t))
 
-(defun tyapp-name (tyapp)
-  (tycon-name (tyapp-constructor tyapp)))
+(defun tyfun-arity (tyfun)
+  (length (tyfun-from tyfun)))
+
 
 #+sbcl (declaim (sb-ext:freeze-type ty tyvar tyapp tyfun))
 

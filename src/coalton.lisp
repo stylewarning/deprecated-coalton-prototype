@@ -206,11 +206,15 @@
               (symbol
                (push (list ':variable ctor ty) constructors))
               (alexandria:proper-list
-               (destructuring-bind (name argty) ctor
+               (destructuring-bind (name &rest argtys) ctor
                  (push (list ':function
                              name
                              (make-function-type
-                              (parse-type-expression argty :variable-assignments fvs)
+                              (loop :for argty :in argtys
+                                    :collect (parse-type-expression
+                                              argty
+                                              :extra-tycons (list tycon)
+                                              :variable-assignments fvs))
                               ty))
                        constructors)))))
           (values tycon ty constructors))))))
@@ -260,11 +264,13 @@
                                 (:metaclass singleton-class)))
                             (:function
                              `(defclass ,name (,tycon-name)
-                                ((value :initarg :value))
+                                ;; XXX: For now, we just store a vector.
+                                ((value :initarg :value
+                                        :type simple-vector))
                                 (:metaclass final-class)))))
 
          ;; Define constructors
-         ,@(loop :for (kind name _) :in ctors
+         ,@(loop :for (kind name ty) :in ctors
                  :append (ecase kind
                            ;; TODO: Should we emulate a global
                            ;; lexical? The type inference assumes as
@@ -273,10 +279,13 @@
                             (list
                              `(define-global-var* ,name (make-instance ',name))))
                             (:function
-                             (list
-                              `(defun ,name (value)
-                                 (make-instance ',name :value value))
-                              `(define-global-var* ,name #',name)))))
+                             (let* ((arity (tyfun-arity ty))
+                                    (args (loop :repeat arity
+                                                :collect (gensym "A"))))
+                               (list
+                                `(defun ,name ,args
+                                   (make-instance ',name :value (vector ,@args)))
+                                `(define-global-var* ,name #',name))))))
          ;; Define predicates
          ,@(loop :for (ctor-name . pred-name) :in (tycon-constructors tycon)
                  :collect `(defun ,pred-name (object)
