@@ -27,8 +27,9 @@ CL-USER> (in-package :coalton-user)
 COALTON-USER>
 ```
 
-We already have a `Maybe` AST defined in the library. We can
-immediately construct these values in Common Lisp.
+We already have a `Maybe` algebraic data type (ADT)
+defined in the library. We can immediately construct
+these values in Common Lisp.
 ```
 COALTON-USER> (cl:list (Just 5) Nothing Nothing)
 (#<JUST {100B47F7F3}> #<NOTHING {100B0481D3}> #<NOTHING {100B0481D3}>)
