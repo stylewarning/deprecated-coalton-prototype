@@ -179,7 +179,7 @@
        (let ((arity-1 (length (tyfun-from pty1)))
              (arity-2 (length (tyfun-from pty2))))
          (unless (= arity-1 arity-2)
-           (error-typing "Type mismatch (mismatched arities of ~D and ~D)" arity-1 arity-2))
+           (error-typing "Mismatched arities ~D and ~D" arity-1 arity-2))
          (mapc #'unify (tyfun-from pty1) (tyfun-from pty2))
          (unify (tyfun-to pty1) (tyfun-to pty2))))
       ((and (tyapp-p pty1)
@@ -188,12 +188,8 @@
              (name2 (tyapp-name pty2)) (types2 (tyapp-types pty2)))
          (when (or (not (eq name1 name2))
                    (not (= (length types1) (length types2))))
-             (error-typing "Type mismatch: ~S and ~S"
-                           (unparse-type pty1)
-                           (unparse-type pty2)))
+             (error-type-mismatch (unparse-type pty1) (unparse-type pty2)))
          (mapc #'unify types1 types2)))
       (t
-       (error-typing "Type mismatch: ~S and ~S"
-                     (unparse-type ty1)
-                     (unparse-type ty2)))))
+       (error-type-mismatch (unparse-type ty1) (unparse-type ty2)))))
   nil)

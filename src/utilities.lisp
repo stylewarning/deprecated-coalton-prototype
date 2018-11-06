@@ -14,3 +14,6 @@
 
 (defun error-typing (reason-control &rest reason-args)
   (error "Type error: ~?" reason-control reason-args))
+
+(defun error-type-mismatch (a b)
+  (error-typing "The types ~S and ~S don't match." a b))

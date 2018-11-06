@@ -151,3 +151,8 @@
                     (unify (make-function-type arg-tys ret-ty) fun-ty)
                     ret-ty))))))
     (analyze value nil nil)))
+
+(defun coalton:type-of (global-name)
+  (check-type global-name symbol)
+  (unparse-type (var-derived-type global-name)))
+

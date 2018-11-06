@@ -4,6 +4,7 @@
   (:documentation "Public interface to COALTON.")
   (:use)                                ; Keep the package clean!
   (:export
+   #:coalton-toplevel
    #:coalton
    #:define
    #:define-type-alias
@@ -22,7 +23,9 @@
    #:let
    #:letrec
    #:if
-   #:lisp))
+   #:lisp)
+  (:export
+   #:type-of))
 
 (defpackage #:coalton-user
   (:documentation "User package for Coalton.")

@@ -12,7 +12,7 @@
 ;;; compiler. See the COALTON macro.
 
 (define-global-var **toplevel-operators** '(coalton:progn
-                                            coalton:coalton))
+                                            coalton:coalton-toplevel))
 (define-global-var **special-operators** `(,@**toplevel-operators**
                                            coalton:define
                                            coalton:define-type-alias
@@ -125,7 +125,7 @@
 (defmethod compile-toplevel-special-form ((operator (eql 'coalton:progn)) whole)
   (error "PROGN should be elminiated at the top-level."))
 
-(defmethod compile-toplevel-special-form ((operator (eql 'coalton:coalton)) whole)
+(defmethod compile-toplevel-special-form ((operator (eql 'coalton:coalton-toplevel)) whole)
   (error "COALTON should be eliminated at the top-level."))
 
 (defun check-compound-form (form starts-with)
@@ -387,5 +387,13 @@
 
 ;;; Coalton Macros
 
-(defmacro coalton:coalton (&body toplevel-forms)
+(defmacro coalton:coalton-toplevel (&body toplevel-forms)
+  "Top-level definitions for use within Coalton."
   (process-coalton-toplevel-forms (flatten-toplevel-forms toplevel-forms)))
+
+(defmacro coalton:coalton (coalton-form)
+  "The bridge from Coalton to Lisp. Compute a Coalton value as a Lisp value."
+  (let* ((parsed-form (parse-form coalton-form))
+         (derived-type (derive-type parsed-form)))
+    (declare (ignore derived-type))
+    (compile-value-to-lisp parsed-form)))
