@@ -37,12 +37,7 @@
 
 ;;; Boolean
 (coalton-toplevel
-  (declare not (-> Boolean Boolean))
-  ;; FIXME: write using pattern matching
-  (define (not x) (lisp Boolean
-                        (cl:cond
-                          ((cl:eql x True) False)
-                          ((cl:eql x False) True)))))
+  (define (not x) (if x False True)))
 
 ;;; Arithmetic
 (coalton-toplevel
