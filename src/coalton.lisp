@@ -276,7 +276,7 @@
                              (format stream "#.~s" ',name)))
                          (:function
                           `(defmethod print-object ((self ,name) stream)
-                             (format stream "#.(~s ~{~s~^ ~})"
+                             (format stream "#.(~s~{ ~s~})"
                                      ',name
                                      (coerce (slot-value self 'value) 'list))))))
 
