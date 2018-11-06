@@ -159,9 +159,11 @@ Data Flow Control:
 
 Pile on top of this the existence of first-class functions, applicative-order evaluation, and a large standard library, and one is presented with a relatively powerful target language for the expression of semantics. With that said, not all constructs can be expressed. For instance, there is no portable way to express a "computed goto" [WikiGoto, WikiBranchTable] that works in constant time, constant memory, and respects the lexical environment. (In the spirit of Turing equivalence, however, we can simulate the functionality.)
 
+_To Be Continued..._
+
 ## [Dumping Ground of Ideas]
 
-Name: "Coalton", a play on MLton with CL in the name.
+Name: "Coalton", a play on MLton with CL in the name. I don't want to risk a name like CLton where everybody will mispronounce it. :)
 
 Lisp implementation package name: `coalton-impl`
 
@@ -183,6 +185,10 @@ Interoperability in both directions should be a primary concern to the fullest p
 
 * Should still make use of the package system.
 
+`(coalton:lisp type lisp-form)`: embed Lisp in Coalton
+
+`(coalton:coalton coalton-form)`: embed Coalton in Lisp
+
 ### Function/Value Namespace
 
 Coalton should probably be a Lisp-1 dealio. Function names and value names shouldn't be distinguished. Is this too inconvenient? Lisp doesn't have global lexical variables. How do these play in with existing function names? This should be addressed ASAP.
@@ -193,17 +199,17 @@ What does a curried definition look like?
 
 ### Giant Macro?
 
-Should most Coalton definitions be in a giant macro?
+Coalton definitions will live in a toplevel macros. These will have letrec-like scope.
 
 ```
-(coalton:coalton
+(coalton:coalton-toplevel
   ...
   data defines, function defines, etc.
   ...
 )
 ```
 
-Or can we get away with piecemeal macros? What about top-level `letrec`?
+Can we get away with piecemeal macros?
 
 ### ASDF File Type
 
@@ -223,7 +229,7 @@ What about post-compilation-unit hooks?
 no real ideas here, depends more or less how we want to define pattern matching, whether we want guards, how we deal with annotations on variable bindings, etc.
 
 ```
-(coalton:type len (forall a (-> (list a) integer)))
+(coalton:declare len (-> (list a) integer))
 (coalton:define (len x)
   (match x
     nil         => 0
