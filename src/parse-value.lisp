@@ -56,7 +56,8 @@ This does not attempt to do any sort of analysis whatsoever. It is suitable for 
                       (parse else)))
 
            (parse-lisp (type lisp-expr)
-             (node-lisp (parse-type-expression type) (parse lisp-expr)))
+             ;; Do *NOT* parse LISP-EXPR!
+             (node-lisp (parse-type-expression type) lisp-expr))
 
            (parse-sequence (exprs)
              (node-sequence (loop :for expr :in exprs :collect (parse expr))))
