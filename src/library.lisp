@@ -26,7 +26,11 @@
 
   (define-type (Liszt t)
     Knil
-    (Kons t (Liszt t))))
+    (Kons t (Liszt t)))
+
+  (define-type (Binary-Tree s t)
+    (Leaf s)
+    (Branch t (Binary-Tree s t) (Binary-Tree s t))))
 
 ;;; Combinators
 (coalton-toplevel
@@ -38,6 +42,15 @@
 ;;; Boolean
 (coalton-toplevel
   (define (not x) (if x False True)))
+
+;;; Strings
+(coalton-toplevel
+  (declare concat (-> (String String) String))
+  (define (concat a b) (lisp String
+                         (cl:concatenate 'cl:string a b)))
+
+  (declare string-length (-> String Integer))
+  (define (string-length s) (lisp Integer (cl:length s))))
 
 ;;; Arithmetic
 (coalton-toplevel

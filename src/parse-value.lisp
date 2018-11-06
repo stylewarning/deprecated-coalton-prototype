@@ -12,7 +12,8 @@ This does not attempt to do any sort of analysis whatsoever. It is suitable for 
                 (etypecase expr
                   (null    (error-parsing expr "NIL is not allowed!"))
                   (symbol  (parse-variable expr))
-                  (integer (parse-atom expr))))
+                  ((or integer string)
+                   (parse-atom expr))))
                ((alexandria:proper-list-p expr)
                 (alexandria:destructuring-case expr
                   ((coalton:fn vars subexpr)

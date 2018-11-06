@@ -8,11 +8,19 @@
   "Make a function type mapping FROM to TO. Equivalent to (-> FROM TO)."
   (tyfun (alexandria:ensure-list from) to))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; INTEGER ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; Needed to work with integer literals.
 (define-type-constructor coalton:integer 0)
 (define-global-var* integer-type (tyapp (find-tycon 'coalton:integer)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; STRING ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; Needed to work with string literals.
+(define-type-constructor coalton:string 0)
+(define-global-var* string-type (tyapp (find-tycon 'coalton:string)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; BOOLEAN ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

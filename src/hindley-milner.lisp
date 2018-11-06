@@ -50,7 +50,8 @@
              (etypecase expr
                (node-literal
                 (etypecase (node-literal-value expr)
-                  (integer integer-type)))
+                  (integer integer-type)
+                  (string  string-type)))
 
                (node-variable
                 ;; XXX: Check the global environment!!!
@@ -154,5 +155,5 @@
 
 (defun coalton:type-of (global-name)
   (check-type global-name symbol)
-  (unparse-type (var-derived-type global-name)))
+  (unparse-type (lookup-type global-name nil nil)))
 
