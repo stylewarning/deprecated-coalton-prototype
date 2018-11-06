@@ -39,12 +39,16 @@
     (warn "Overwriting info entry for ~S" var))
   (setf (gethash var **global-value-definitions**) new-value))
 
-(defun forward-declare-variable (var)
+(defun forward-declare-variable (var &optional declared-type)
   (check-type var symbol)
+  (check-type declared-type (or ty null))
   (when (var-knownp var)
     (error "Can't forward declare ~S, which is already known." var))
   (setf (gethash var **global-value-definitions**)
-        (make-entry :internal-name (make-symbol (symbol-name var)))))
+        (make-entry :internal-name (make-symbol (symbol-name var))))
+  (when declared-type
+    (setf (var-declared-type var) declared-type))
+  var)
 
 (defun var-declared-type (var)
   (let ((info (var-info var)))

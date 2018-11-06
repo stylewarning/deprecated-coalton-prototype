@@ -11,8 +11,8 @@
   (:export
    #:->
    #:integer
-   #:boolean
-   #:unit
+   #:boolean #:true #:false
+   #:unit #:singleton
    )
   (:export
    #:declare

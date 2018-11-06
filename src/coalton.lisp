@@ -87,7 +87,7 @@
                      ,(analyze subexpr))))
 
                (node-if
-                `(if ,(analyze (node-if-test expr))
+                `(if (eql coalton:true ,(analyze (node-if-test expr)))
                      ,(analyze (node-if-then expr))
                      ,(analyze (node-if-else expr))))
 
