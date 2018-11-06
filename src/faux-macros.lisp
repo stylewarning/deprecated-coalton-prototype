@@ -39,7 +39,7 @@
 (define-coalton-editor-macro coalton:progn (&body forms)
   "Sequence of left-to-right evaluations.")
 
-(define-coalton-editor-macro coalton:fn (var &body form)
+(define-coalton-editor-macro coalton:fn (vars &body form)
   "A lambda abstraction.")
 
 (define-coalton-editor-macro coalton:match (expr &body patterns)
@@ -54,5 +54,5 @@
 (define-coalton-editor-macro coalton:if (test then else)
   "A conditional construct.")
 
-(define-coalton-editor-macro coalton:lisp (type lisp-expr)
+(define-coalton-editor-macro coalton:lisp (type &body lisp-expr)
   "An escape from Coalton into the Lisp world.")
