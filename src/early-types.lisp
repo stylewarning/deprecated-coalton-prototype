@@ -2,8 +2,6 @@
 
 (in-package #:coalton-impl)
 
-(define-type-constructor coalton:-> 2)
-
 (defun make-function-type (from to)
   "Make a function type mapping FROM to TO. Equivalent to (-> FROM TO)."
   (tyfun (alexandria:ensure-list from) to))
