@@ -60,7 +60,7 @@
   (define (* x y) (lisp Integer (cl:* x y)))
 
   (declare / (-> (Integer Integer) Integer))
-  (define (/ x y) (lisp Integer (cl:floor x y)))
+  (define (/ x y) (lisp Integer (cl:values (cl:floor x y))))
   (define (safe-/ x y) (if (zerop y)
                            Nothing
                            (Just (/ x y)))))
@@ -101,4 +101,11 @@
                     (if (Knil? l)
                         n
                         (len (cdr l) (1+ n))))))
-      (len l 0))))
+      (len l 0)))
+
+  (define (map f x)
+    (if (Knil? x)
+        Knil
+        (Kons (f (car x)) (map f (cdr x)))))
+
+  (define (mapper f) (fn x (map f x))))

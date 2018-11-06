@@ -38,7 +38,8 @@ This does not attempt to do any sort of analysis whatsoever. It is suitable for 
              (node-variable var))
 
            (parse-abstraction (vars subexpr)
-             (node-abstraction vars (parse subexpr)))
+             (node-abstraction (alexandria:ensure-list vars)
+                               (parse subexpr)))
 
            (parse-let (bindings subexpr)
              (node-let (loop :for (bind-var bind-val) :in bindings
