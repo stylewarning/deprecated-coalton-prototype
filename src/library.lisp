@@ -88,13 +88,17 @@
 
   (declare car (-> ((Liszt t)) t))
   (define (car x)
-    (lisp t
-      (cl:svref (cl:slot-value x 'coalton-impl::value) 0)))
+    (if (Knil? x)                       ; match CL behavior
+        Knil
+        (lisp t
+          (cl:svref (cl:slot-value x 'coalton-impl::value) 0))))
 
   (declare cdr (-> ((Liszt t)) (Liszt t)))
   (define (cdr x)
-    (lisp t
-      (cl:svref (cl:slot-value x 'coalton-impl::value) 1)))
+    (if (Knil? x)                       ; match CL behavior
+        Knil
+        (lisp t
+          (cl:svref (cl:slot-value x 'coalton-impl::value) 1))))
 
   (define (length l)
     (letrec ((len (fn (l n)
