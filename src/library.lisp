@@ -1,6 +1,6 @@
 ;;; library.lisp
 
-(in-package #:coalton-user)
+(cl:in-package #:coalton-user)
 
 (coalton
   (define-type Void)
