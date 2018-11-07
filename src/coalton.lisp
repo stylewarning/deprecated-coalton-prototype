@@ -30,12 +30,13 @@
 ;;;
 ;;;     <expr> := <atom>
 ;;;             | <variable>         ; variable
-;;;             | (<expr> <expr>)    ; application
-;;;             | (fn <variable> <expression>)
+;;;             | (<expr> <expr> ...)
+;;;                                  ; application
+;;;             | (fn (<variable> ...) <expression>)
 ;;;                                  ; abstraction
 ;;;             | (let ((<variable> <expression>) ...) <expression>)
 ;;;                                  ; lexical binding
-;;;             | (if <expr> <expr> <expr>
+;;;             | (if <expr> <expr> <expr>)
 ;;;                                  ; conditional
 ;;;             | (progn <expr> ...) ; sequence
 ;;;             | (lisp <type> <expr>)
