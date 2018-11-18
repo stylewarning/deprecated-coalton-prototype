@@ -2,7 +2,32 @@
 ;;;;
 ;;;; Some example Coalton code?
 
-(in-package #:coalton)
+(in-package #:coalton-user)
+
+(coalton-toplevel
+  (define-type Chess-Piece
+    King
+    Queen
+    Rook
+    Bishop
+    Knight
+    Pawn)
+
+  (define-type White-Move
+    (White-Move-To Chess-Piece Integer Integer Black-Move)
+    Black-Checkmate)
+
+  (define-type Black-Move
+    (Black-Move-To Chess-Piece Integer Integer White-Move)
+    White-Checkmate))
+
+(coalton-toplevel
+  (define-type Red
+    (Red-Nil)
+    (Red-Cons Black Red))
+  (define-type Black
+    (Black-Nil)
+    (Black-Cons Red Black)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;; Does Not Work ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -31,11 +56,3 @@
   (define g (if (h true) 1 0))
   (define (h x) x))
 
-;;; Mutually recursive types.
-(coalton
-  (define-type Red
-    (RedNil)
-    (RedCons Black Red))
-  (define-type Black
-    (BlackNil)
-    (BlackCons Red Black)))
