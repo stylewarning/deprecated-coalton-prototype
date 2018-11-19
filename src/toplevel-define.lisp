@@ -38,7 +38,7 @@
   (check-type var symbol)
   ;; XXX: Should this be LETREC too? Probably for something like F = x => ... F.
   (values var
-          (parse-form `(coalton:letrec ((,var ,val)) ,var))
+          (parse-form val)
           ':variable
           nil))
 
@@ -46,14 +46,15 @@
   (check-type fvar symbol)
   ;; The (DEFINE (<fvar> . <args>) <val>) case.
   (values fvar
-          (parse-form `(coalton:letrec ((,fvar  (coalton:fn ,args ,val))) ,fvar))
+          (parse-form `(coalton:fn ,args ,val))
           ':function
           args))
 
 ;;; TODO: make sure we can lexically shadow global bindings
-(defun compile-toplevel-define (name expr kind args &optional (whole nil whole-provided-p))
+(defun compile-toplevel-define (name self expr kind args &optional (whole nil whole-provided-p))
   ;; WHOLE = the source form
   ;; NAME = var name being bound
+  ;; SELF = is NAME self-referential in EXPR?
   ;; EXPR = a NODE instance whose type has already been derived.
   ;; KIND = {:variable, :function}
   ;; ARGS = a list of arguments if the KIND if a :FUNCTION
@@ -69,17 +70,22 @@
        (forward-declare-variable name))
      ;; The type inferencing has already been done by this point. (See
      ;; `PROCESS-TOPLEVEL-VALUE-DEFINITIONS'.)
-     (let ((inferred-type (node-derived-type expr))
+     (let (;;(inferred-type (node-derived-type expr))
            (internal-name (entry-internal-name (var-info name))))
        ;; FIXME check VAR-DECLARED-TYPE
        ;; FIXME check VAR-DERIVED-TYPE
-       (setf (var-derived-type name)             inferred-type
+       (setf ;;(var-derived-type name)             inferred-type
              (entry-node (var-info name))        expr)
        (when whole-provided-p
          (setf (entry-source-form (var-info name)) whole))
        (list*
         `(define-symbol-macro ,name ,internal-name)
-        `(global-vars:define-global-var ,internal-name ,(compile-value-to-lisp expr))
+        `(global-vars:define-global-var ,internal-name
+             ,(if (not self)
+                  (compile-value-to-lisp expr)
+                  `(let (,name)
+                    (setf ,name ,(compile-value-to-lisp expr))
+                    ,name)))
         (when (eq ':function kind)
           (list
            `(defun ,name (,@args)
@@ -90,32 +96,42 @@
                        :collect (multiple-value-list (parse-define-form form))))
          (vars (mapcar #'first parsed))
          (vals (mapcar #'second parsed)))
-    (multiple-value-bind (sorted cyclic) (sort-letrec-bindings vars vals)
+    (multiple-value-bind (sorted cyclic self-referential) (sort-letrec-bindings vars vals)
       (setf cyclic (mapcar #'first cyclic))
+
+      ;; We infer the types of the sorted list of variables. We do
+      ;; this for effect: each node will be tagged with the type in the
+      ;; DERIVED-TYPE slot.
+      (loop :for var :in sorted ;(reverse sorted)
+            :for raw-val := (second (assoc var parsed))
+            :for val := (if (member var self-referential)
+                            (node-letrec (list (cons var raw-val))
+                                         (node-variable var))
+                            raw-val)
+            ;; Clobbering......
+            :do (unless (var-knownp var)
+                  (forward-declare-variable var))
+                (setf (var-derived-type var) (derive-type val)))
+
       ;; Now we build up our expression. The center of our expression
       ;; will be an opaque value with a type variable. It's a bit of a
       ;; hack, but it's to avoid re-writing inference rules.  Around
       ;; it we form a LETREC out of our cyclic variables.
-      (let ((expr (node-letrec
+      (unless (null cyclic)
+       (let ((expr (node-letrec
                     (loop :for var :in cyclic
                           :for val := (second (assoc var parsed))
                           :collect (cons var val))
                     (node-lisp (make-variable) nil))))
-        ;; We infer the types of the sorted list of variables. We do
-        ;; this for effect: each node will be tagged with the type in the
-        ;; DERIVED-TYPE slot.
-        (loop :for var :in (reverse sorted)
-              :for val := (second (assoc var parsed))
-              :for ty := (derive-type val)
-              ;; Clobbering......
-              :do (setf (var-derived-type var) ty))
-        ;; Next, we derive the type of the letrec expression.
-        (derive-type expr)
-        ;; Now, we unpack all of the information. Do so in a sensible order.
-        (append
-         (loop :for var :in (append sorted cyclic)
-               :for (_ val kind args) := (assoc var parsed)
-               ;; TODO: add the source form
-               :append (compile-toplevel-define var val kind args))
-         ;; NIL is just there for clean kicks
-         '(nil))))))
+         ;; Next, we derive the type of the letrec expression.
+         (derive-type expr)))
+
+      ;; Now, we unpack all of the information. Do so in a sensible order.
+      (append
+       (loop :for var :in (append sorted cyclic)
+             :for self-ref := (member var self-referential)
+             :for (_ val kind args) := (assoc var parsed)
+             ;; TODO: add the source form
+             :append (compile-toplevel-define var self-ref val kind args))
+       ;; NIL is just there for clean kicks
+       '(nil)))))
