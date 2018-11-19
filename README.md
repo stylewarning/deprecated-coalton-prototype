@@ -2,15 +2,33 @@
 
 Coalton is a dialect of ML embedded in Common Lisp. It emphasizes practicality and interoperability with Lisp, and is intended to be a DSL that allows one to gradually make their programs safer.
 
+Coalton currently allows one to do the following in Common Lisp:
+
+* Express statically typed programs similar in spirit to Standard ML, OCaml, and Haskell.
+* Perform compile-time type inference and type checking à la Hindley-Milner type inference.
+  * Global values are inferred by default, but can be manually declared if desired.
+* Interoperate an ML-like with Common Lisp, in both directions. All data values are native and easy data structures.
+* Define parameterized algebraic data types, including mutually recursive types.
+
+Coalton has some limitations:
+
+* [bug] Redefinitions don't play well in a lot of ways:
+  * Types aren't globally re-checked or warned about.
+  * The internal type DB is frequently clobbered with new data.
+* [bug] Declared types *are* used for inference, but are simply believed without question. As such, a bug in a declaration will cause *runtime* bugs.
+* [bug] Pattern matching is not yet implemented.
+* Generalized algebraic data types, type classes, and high-order types are neither implemented nor supported.
+* ML structures, signatures, or functors are neither implemented nor supported.
+
 The project is a work-in-progress. See the [latest thoughts](thoughts.md).
 
 ## Coalton-Lisp Bridge
 
-### Coalton to Lisp
+### Coalton within Lisp
 
 Coalton value definitions come in two forms.
 
-```
+```commonlisp
 ;; Coalton
 (define f v)
 ;; Lisp
@@ -25,7 +43,18 @@ f    ; a function object in the variable namespace
 #'f  ; a function object in the function namespace
 ```
 
+### Lisp within Coalton
 
+Use the `coalton:lisp` macro to embed Lisp code inside of a Coalton program. Of course, Coalton will not be able to verify your Lisp code is correct. For example, the following function uses Common Lisp's `~R` format directive to write integers as strings.
+
+```commonlisp
+;; Coalton
+(coalton-toplevel
+  (declare integer-name (-> Integer String))
+  (define (integer-name n)
+    (lisp String
+      (cl:format cl:nil "~R" n))))
+```
 
 ## Examples
 
@@ -42,7 +71,7 @@ COALTON-USER>
 ```
 
 We already have a `Maybe` algebraic data type (ADT) defined in the library. We can immediately construct these values in Common Lisp. We use the convention in Lisp code to capitalize the first letter of constructors and type names. (Otherwise the capitalization has no significance.)
-```
+```commonlisp
 COALTON-USER> (cl:list (Just 5) Nothing Nothing)
 (#.(JUST 5) #.NOTHING #.NOTHING)
 COALTON-USER> cl::(eq (second *) (third *))
