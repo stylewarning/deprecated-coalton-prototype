@@ -134,3 +134,10 @@
         (Kons (f (car x)) (map f (cdr x)))))
 
   (define (mapper f) (fn x (map f x))))
+
+;; Grab Bag
+(coalton-toplevel
+  (declare integer-name (-> Integer String))
+  (define (integer-name n)
+    (lisp String
+      (cl:format cl:nil "~R" n))))
