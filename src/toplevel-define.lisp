@@ -93,7 +93,8 @@
 
 (defun process-toplevel-value-definitions (def-forms)
   (let* ((parsed (loop :for form :in def-forms
-                       :collect (multiple-value-list (parse-define-form form))))
+                       :collect (append (multiple-value-list (parse-define-form form))
+                                        (list form))))
          (vars (mapcar #'first parsed))
          (vals (mapcar #'second parsed)))
     (multiple-value-bind (sorted cyclic self-referential) (sort-letrec-bindings vars vals)
@@ -130,8 +131,8 @@
       (append
        (loop :for var :in (append sorted cyclic)
              :for self-ref := (member var self-referential)
-             :for (_ val kind args) := (assoc var parsed)
+             :for (_ val kind args whole) := (assoc var parsed)
              ;; TODO: add the source form
-             :append (compile-toplevel-define var self-ref val kind args))
+             :append (compile-toplevel-define var self-ref val kind args whole))
        ;; NIL is just there for clean kicks
        '(nil)))))
