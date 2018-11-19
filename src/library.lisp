@@ -86,6 +86,18 @@
                            Nothing
                            (Just (/ x y)))))
 
+;;; Mutable Cells
+(coalton-toplevel
+  (define-type (Mutable-Cell t)
+    (Ref t))
+
+  (declare mutate-cell (-> ((Mutable-Cell t) t) Unit))
+  (define (mutate-cell r v)
+    (lisp Unit
+      (cl:progn
+        (cl:setf (cl:svref (cl:slot-value r 'coalton-impl::value) 0) v)
+        Singleton))))
+
 ;;; Random examples
 (coalton-toplevel
   (define (fact n)
