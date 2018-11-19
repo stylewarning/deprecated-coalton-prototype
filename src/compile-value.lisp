@@ -61,7 +61,7 @@
                 (let* ((bindings (node-letrec-bindings expr))
                        (vars (mapcar #'car bindings))
                        (vals (mapcar #'cdr bindings)))
-                  (multiple-value-bind (sorted cyclic)
+                  (multiple-value-bind (sorted cyclic self-referential)
                       (sort-letrec-bindings vars vals)
                     ;; Remove dependency info from the CYCLIC DAG. We
                     ;; might use this info in the future.
@@ -73,19 +73,48 @@
                     ;; required at binding time. We also might want to
                     ;; partition the cycles.
                     ;;
-                    ;; We generate a sequence of LET bindings first,
-                    ;; via LET*.
-                    `(let* ,(loop :for var :in sorted
-                                  :for val := (cdr (assoc var bindings))
-                                  :collect `(,var ,(analyze val)))
-                       ;; Now we deal with the cyclic bindings. First,
-                       ;; we set them to be empty.
-                       (let ,cyclic
-                         (psetq ,@(loop :for var :in cyclic
+                    ;; The general structure here is:
+                    ;;
+                    ;; (LET* <sequential value bindings>
+                    ;;   (LET (<list of letrec vars>)
+                    ;;     (PSETQ <letrec var> <letrec val> ...)
+                    ;;     <letrec subexpr>))
+                    ;;
+                    ;; The LET* is however manually expanded out to
+                    ;; account for self-referential variables.
+                    ;;
+                    ;; We build this inside out so as to create a
+                    ;; "clean" macroexpansion.
+                    (let ((let*-bindings (loop :for var :in sorted
+                                               :for val := (cdr (assoc var bindings))
+                                               :collect `(,var ,(analyze val))))
+                          (psetq-pairs (loop :for var :in cyclic
                                         :for val := (cdr (assoc var bindings))
-                                        :append (list var (analyze val))))
-                         ;; Now we generate the subexpression.
-                         ,(analyze (node-letrec-subexpr expr)))))))
+                                             :append (list var (analyze val))))
+                          ;; Generate the subexpression.
+                          (lisp-expr (analyze (node-letrec-subexpr expr))))
+                      ;; Start with the psetq pairs.
+                      (unless (null psetq-pairs)
+                        (setf lisp-expr
+                              `(let ,cyclic
+                                 (psetq ,@psetq-pairs)
+                                 ,lisp-expr)))
+                      ;; Next wrap in the LET*
+                      (unless (null let*-bindings)
+                        (loop :for (x y) :in (reverse let*-bindings)
+                              :do (setf lisp-expr
+                                        (if (member x self-referential)
+                                            `(let (,x)
+                                               (setf ,x ,y)
+                                               ,lisp-expr)
+                                            `(let ((,x ,y))
+                                               ,lisp-expr))))
+                        #+ignore
+                        (setf lisp-expr
+                              `(let* ,let*-bindings
+                                 ,lisp-expr)))
+                      ;; Now return the built lisp expression.
+                      lisp-expr))))
 
                (node-if
                 `(if (eql coalton:true ,(analyze (node-if-test expr)))
