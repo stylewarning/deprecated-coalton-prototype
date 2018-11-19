@@ -4,6 +4,29 @@ Coalton is a dialect of ML embedded in Common Lisp. It emphasizes practicality a
 
 The project is a work-in-progress. See the [latest thoughts](thoughts.md).
 
+## Coalton-Lisp Bridge
+
+### Coalton to Lisp
+
+Coalton value definitions come in two forms.
+
+```
+;; Coalton
+(define f v)
+;; Lisp
+f   ; an object (possibly a function) in the variable namespace
+    ; can be lexically shadowed
+
+;; Coalton
+(define (f x ...) v)
+;; Lisp
+f    ; a function object in the variable namespace
+     ; can be lexically shadowed
+#'f  ; a function object in the function namespace
+```
+
+
+
 ## Examples
 
 **You may want to check out the [library](src/library.lisp) for example code.** It represents the latest of what Coalton can do, and it also has a lot of definitions that the following depends on. (It is loaded by default as a part of Coalton.)
@@ -92,3 +115,4 @@ Restarts:
  1: [*ABORT] Return to SLIME's top level.
  2: [ABORT] abort thread (#<THREAD "repl-thread" RUNNING {1008E28413}>)
 ```
+

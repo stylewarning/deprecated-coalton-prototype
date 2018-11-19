@@ -32,6 +32,12 @@
     (Leaf s)
     (Branch t (Binary-Tree s t) (Binary-Tree s t))))
 
+;;; Erroring
+(coalton-toplevel
+ (declare error (-> String t))
+ (define (error str)
+   (lisp t (error "~A" str))))
+
 ;;; Combinators
 (coalton-toplevel
   (define (ignore x) Singleton)
@@ -55,8 +61,9 @@
 ;;; Arithmetic
 (coalton-toplevel
   (declare = (-> (Integer Integer) Boolean))
-  (define (= x y) (lisp Boolean (coalton-impl::lisp-boolean-to-coalton-boolean
-                                 (cl:= x y))))
+  (define (= x y) (lisp Boolean
+                    (coalton-impl::lisp-boolean-to-coalton-boolean
+                     (cl:= x y))))
 
   (define (zerop x) (= x 0))
 
@@ -101,8 +108,8 @@
 
   (declare car (-> ((Liszt t)) t))
   (define (car x)
-    (if (Knil? x)                       ; match CL behavior
-        Knil
+    (if (Knil? x)
+        (error "Can't take CAR of KNIL")
         (lisp t
           (cl:svref (cl:slot-value x 'coalton-impl::value) 0))))
 

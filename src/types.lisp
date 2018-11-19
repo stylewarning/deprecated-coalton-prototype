@@ -72,6 +72,10 @@
 (defun tyfun-arity (tyfun)
   (length (tyfun-from tyfun)))
 
+(defun function-type-p (ty)
+  "Does the type TY represent a function type?"
+  (check-type ty ty)
+  (typep ty 'tyfun))
 
 #+sbcl (declaim (sb-ext:freeze-type ty tyvar tyapp tyfun))
 

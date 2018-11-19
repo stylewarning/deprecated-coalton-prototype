@@ -84,3 +84,37 @@
 (define-node-type node-lisp
   (type ty)
   (form t))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Unparsing ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun unparse-node (node)
+  (etypecase node
+    (node-literal
+     (node-literal-value node))
+    (node-variable
+     (node-variable-name node))
+    (node-application
+     `(,(unparse-node (node-application-rator node))
+       ,@(mapcar #'unparse-node (node-application-rands node))))
+    (node-abstraction
+     `(coalton:fn ,(node-abstraction-vars node)
+        ,(unparse-node (node-abstraction-subexpr node))))
+    (node-let
+     `(coalton:let ,(loop :for (var . val) :in (node-let-bindings node)
+                          :collect (list var (unparse-node val)))
+        ,(unparse-node (node-let-subexpr node))))
+    (node-letrec
+     `(coalton:letrec ,(loop :for (var . val) :in (node-letrec-bindings node)
+                             :collect (list var (unparse-node val)))
+        ,(unparse-node (node-letrec-subexpr node))))
+    (node-if
+     `(coalton:if ,(unparse-node (node-if-test node))
+                  ,(unparse-node (node-if-then node))
+                  ,(unparse-node (node-if-else node))))
+    (node-sequence
+     `(coalton:progn
+        ,@(mapcar #'unparse-node (node-sequence-exprs node))))
+    (node-lisp
+     `(coalton:lisp ,(unparse-type (node-lisp-type node))
+        ,(node-lisp-form node)))))

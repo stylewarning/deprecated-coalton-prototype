@@ -58,18 +58,34 @@
                    ,(analyze (node-let-subexpr expr))))
 
                (node-letrec
-                ;; TODO: this is broken... this isn't quite
-                ;; right and only works well for functions
                 (let* ((bindings (node-letrec-bindings expr))
-                       (subexpr (node-letrec-subexpr expr))
                        (vars (mapcar #'car bindings))
                        (vals (mapcar #'cdr bindings)))
-                  `(let (,@vars)
-                     (psetf ,@(loop :for var :in vars
-                                    :for val :in vals
-                                    :collect var
-                                    :collect (analyze val)))
-                     ,(analyze subexpr))))
+                  (multiple-value-bind (sorted cyclic)
+                      (sort-letrec-bindings vars vals)
+                    ;; Remove dependency info from the CYCLIC DAG. We
+                    ;; might use this info in the future.
+                    (setf cyclic (mapcar #'first cyclic))
+                    ;; TODO: We can statically check if a value is
+                    ;; needed right away, and error here. We would
+                    ;; need to see if needed values are closed over
+                    ;; (permanently), or whether their value is
+                    ;; required at binding time. We also might want to
+                    ;; partition the cycles.
+                    ;;
+                    ;; We generate a sequence of LET bindings first,
+                    ;; via LET*.
+                    `(let* ,(loop :for var :in sorted
+                                  :for val := (cdr (assoc var bindings))
+                                  :collect `(,var ,(analyze val)))
+                       ;; Now we deal with the cyclic bindings. First,
+                       ;; we set them to be empty.
+                       (let ,cyclic
+                         (psetq ,@(loop :for var :in cyclic
+                                        :for val := (cdr (assoc var bindings))
+                                        :append (list var (analyze val))))
+                         ;; Now we generate the subexpression.
+                         ,(analyze (node-letrec-subexpr expr)))))))
 
                (node-if
                 `(if (eql coalton:true ,(analyze (node-if-test expr)))
