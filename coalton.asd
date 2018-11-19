@@ -23,6 +23,7 @@
                (:file "early-types")
                (:file "hindley-milner")
                (:file "free-variables")
+               (:file "sort-letrec")
                (:file "compile-value")
                (:file "toplevel-declare")
                (:file "toplevel-define-type")

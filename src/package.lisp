@@ -1,5 +1,7 @@
 ;;;; package.lisp
 
+(in-package #:cl-user)
+
 (defpackage #:coalton
   (:documentation "Public interface to COALTON.")
   (:use)                                ; Keep the package clean!
@@ -40,3 +42,7 @@
   (:import-from #:abstract-classes #:abstract-class #:final-class)
   (:import-from #:singleton-classes #:singleton-class)
   (:export))
+
+(defpackage #:coalton-global-symbols
+  (:documentation "A place that global value names are stashed. We don't use uninterned symbols so that they can be reified through the compilation process.")
+  (:use))
