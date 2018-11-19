@@ -12,6 +12,7 @@ Coalton currently allows one to do the following in Common Lisp:
 
 Coalton has some limitations:
 
+* [bug] Unit tests aren't at all written. USE AT YOUR OWN RISK!
 * [bug] Redefinitions don't play well in a lot of ways:
   * Types aren't globally re-checked or warned about.
   * The internal type DB is frequently clobbered with new data.
