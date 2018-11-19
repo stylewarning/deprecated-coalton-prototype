@@ -36,14 +36,15 @@
 (coalton-toplevel
  (declare error (-> String t))
  (define (error str)
-   (lisp t (error "~A" str))))
+   (lisp t (cl:error "~A" str))))
 
 ;;; Combinators
 (coalton-toplevel
   (define (ignore x) Singleton)
   (define (identity x) x)
   (define (constantly x) (fn (y) x))
-  (define (flip f) (fn (x y) (f y x))))
+  (define (flip f) (fn (x y) (f y x)))
+  (define (compose f g) (fn (x) (f (g x)))))
 
 ;;; Boolean
 (coalton-toplevel
