@@ -167,33 +167,116 @@
     (and entry
          (cdr entry))))
 
-(defun unify (ty1 ty2)
-  (let ((pty1 (prune ty1))
-        (pty2 (prune ty2)))
-    (cond
-      ((tyvar-p pty1)
-       (unless (equalp pty1 pty2)
-         (when (occurs-in-type pty1 pty2)
-           (error-typing "Attempting to infinitely recurse into unification."))
-         (setf (tyvar-instance pty1) pty2)))
-      ((tyvar-p pty2)
-       (unify pty2 pty1))
-      ((and (tyfun-p pty1)
-            (tyfun-p pty2))
-       (let ((arity-1 (length (tyfun-from pty1)))
-             (arity-2 (length (tyfun-from pty2))))
-         (unless (= arity-1 arity-2)
-           (error-typing "Mismatched arities ~D and ~D" arity-1 arity-2))
-         (mapc #'unify (tyfun-from pty1) (tyfun-from pty2))
-         (unify (tyfun-to pty1) (tyfun-to pty2))))
-      ((and (tyapp-p pty1)
-            (tyapp-p pty2))
-       (let ((name1 (tyapp-name pty1)) (types1 (tyapp-types pty1))
-             (name2 (tyapp-name pty2)) (types2 (tyapp-types pty2)))
-         (when (or (not (eq name1 name2))
-                   (not (= (length types1) (length types2))))
-             (error-type-mismatch (unparse-type pty1) (unparse-type pty2)))
-         (mapc #'unify types1 types2)))
-      (t
-       (error-type-mismatch (unparse-type ty1) (unparse-type ty2)))))
+
+;;;;;;;;;;;;;;;;;;;;;;; Type Error Conditions ;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-condition coalton-type-error (error)
+  ()
+  (:documentation "A type error occuring in Coalton."))
+
+(define-condition unification-error (coalton-type-error)
+  ((first-type :initarg :first-type
+               :reader unification-error-first-type)
+   (second-type :initarg :second-type
+                :reader unification-error-second-type))
+  (:documentation "A general error indicating unification failure."))
+
+(define-condition type-mismatch (unification-error)
+  ((mismatched-types :initarg :mismatched-types
+                     :reader type-mismatch-types))
+  (:documentation "An error that is signalled when unification fails due to a type mismatch.")
+  (:report (lambda (c s)
+             (let ((*print-circle* nil)
+                   (*print-pretty* nil))
+               (format s "The types ~S and ~S are incompatible specifically ~
+                          because ~S and ~S do not unify."
+                       (unparse-type (unification-error-first-type c))
+                       (unparse-type (unification-error-second-type c))
+                       (unparse-type (first (type-mismatch-types c)))
+                       (unparse-type (second (type-mismatch-types c))))))))
+
+(define-condition arity-mismatch (type-mismatch)
+  ((mismatched-arities :initarg :mismatched-arities
+                       :reader arity-mismatch-arities))
+  (:documentation "An error that is signalled when unification fails due to an arity mismatch.")
+  (:report (lambda (c s)
+             (let ((*print-circle* nil)
+                   (*print-pretty* nil))
+               (format s "The types ~S and ~S are incompatible specifically ~
+                          because the function types ~S and ~S have different ~
+                          arities (~D and ~D respectively)."
+                       (unparse-type (unification-error-first-type c))
+                       (unparse-type (unification-error-second-type c))
+                       (unparse-type (first (type-mismatch-types c)))
+                       (unparse-type (second (type-mismatch-types c)))
+                       (first (arity-mismatch-arities c))
+                       (second (arity-mismatch-arities c)))))))
+
+(define-condition non-terminating-unification-error (unification-error)
+  ((contained-type :initarg :contained-type
+                   :reader non-terminating-unification-error-contained-type)
+   (containing-type :initarg :containing-type
+                    :reader non-terminating-unification-error-containing-type))
+  (:documentation "An error that is signalled when unification would not terminate due to infinite recursion.")
+  (:report (lambda (c s)
+             (let ((*print-circle* nil)
+                   (*print-pretty* nil))
+               (format s "The types ~S and ~S cannot be unified because ~
+                          it will cause infinite unification. Specifically,
+                          ~S occurs in ~S."
+                       (unparse-type (unification-error-first-type c))
+                       (unparse-type (unification-error-second-type c))
+                       (unparse-type (non-terminating-unification-error-contained-type c))
+                       (unparse-type (non-terminating-unification-error-containing-type c)))))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; Unification ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun unify (type1 type2)
+  ;; We use LABELS just so we can have a copy of the original TYPE1
+  ;; and TYPE2 for error reporting purposes..
+  (labels ((%unify (ty1 ty2)
+             (let ((pty1 (prune ty1))
+                   (pty2 (prune ty2)))
+               (cond
+                 ((tyvar-p pty1)
+                  (unless (equalp pty1 pty2)
+                    (when (occurs-in-type pty1 pty2)
+                      (error 'non-terminating-unification-error
+                             :first-type type1
+                             :second-type type2
+                             :contained-type pty1
+                             :containing-type pty2))
+                    (setf (tyvar-instance pty1) pty2)))
+                 ((tyvar-p pty2)
+                  (%unify pty2 pty1))
+                 ((and (tyfun-p pty1)
+                       (tyfun-p pty2))
+                  (let ((arity-1 (length (tyfun-from pty1)))
+                        (arity-2 (length (tyfun-from pty2))))
+                    (unless (= arity-1 arity-2)
+                      (error 'arity-mismatch
+                             :first-type type1
+                             :second-type type2
+                             :mismatched-types (list pty1 pty2)
+                             :mismatched-arities (list arity-1 arity-2)))
+                    (mapc #'%unify (tyfun-from pty1) (tyfun-from pty2))
+                    (%unify (tyfun-to pty1) (tyfun-to pty2))))
+                 ((and (tyapp-p pty1)
+                       (tyapp-p pty2))
+                  (let ((name1 (tyapp-name pty1)) (types1 (tyapp-types pty1))
+                        (name2 (tyapp-name pty2)) (types2 (tyapp-types pty2)))
+                    (when (or (not (eq name1 name2))
+                              (not (= (length types1) (length types2))))
+                      (error 'type-mismatch
+                             :first-type type1
+                             :second-type type2
+                             :mismatched-types (list pty1 pty2)))
+                    (mapc #'%unify types1 types2)))
+                 (t
+                  (error 'type-mismatch
+                         :first-type type1
+                         :second-type type2
+                         :mismatched-types (list ty1 ty2)))))))
+    (%unify type1 type2))
   nil)

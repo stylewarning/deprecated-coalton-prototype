@@ -1,10 +1,11 @@
-;;;; value-environment.lisp
+;;;; global-environment.lisp
 
 (in-package #:coalton-impl)
 
 ;;;;;;;;;;;;;;;;;;;;;;; Global Value Bindings ;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defstruct entry
+  "An entry in the global value database."
   internal-name
   declared-type
   derived-type
@@ -16,10 +17,12 @@
   "Database of Coalton global value definitions.")
 
 (defun var-knownp (var)
+  "Have we seen VAR?"
   (check-type var symbol)
   (nth-value 1 (gethash var **global-value-definitions**)))
 
 (defun var-info (var)
+  "What do we know about the known variable VAR?"
   (check-type var symbol)
   (multiple-value-bind (val exists?) (gethash var **global-value-definitions**)
     (unless exists?
@@ -43,14 +46,14 @@
   (check-type s symbol)
   (gentemp (symbol-name s) ':coalton-global-symbols))
 
-(defun forward-declare-variable (var &optional declared-type)
+(defun forward-declare-variable (var &optional (declared-type nil declaredp))
   (check-type var symbol)
   (check-type declared-type (or ty null))
   (when (var-knownp var)
     (error "Can't forward declare ~S, which is already known." var))
   (setf (gethash var **global-value-definitions**)
         (make-entry :internal-name (make-internal-name var)))
-  (when declared-type
+  (when declaredp
     (setf (var-declared-type var) declared-type))
   var)
 

@@ -9,11 +9,22 @@
 (defun boolify (thing)
   (if thing t nil))
 
-(defun error-parsing (thing reason-control &rest reason-args)
-  (error "Failed to parse ~S because: ~?" thing reason-control reason-args))
+(define-condition coalton-parse-error (error)
+  ((form :initarg :form
+         :reader coalton-parse-error-form)
+   (reason-control :initarg :reason-control
+                   :reader coalton-parse-error-reason-control)
+   (reason-args :initarg :reason-args
+                :reader coalton-parse-error-reason-args))
+  (:report (lambda (c s)
+             (format s "Failed to parse ~S because: ~?"
+                     (coalton-parse-error-form c)
+                     (coalton-parse-error-reason-control c)
+                     (coalton-parse-error-reason-args c)))))
 
-(defun error-typing (reason-control &rest reason-args)
-  (error "Type error: ~?" reason-control reason-args))
+(defun error-parsing (form reason-control &rest reason-args)
+  (error 'coalton-parse-error
+         :form form
+         :reason-control reason-control
+         :reason-args reason-args))
 
-(defun error-type-mismatch (a b)
-  (error-typing "The types ~S and ~S don't match." a b))

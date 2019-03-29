@@ -41,7 +41,25 @@
                 #:define-global-var*)
   (:import-from #:abstract-classes #:abstract-class #:final-class)
   (:import-from #:singleton-classes #:singleton-class)
-  (:export))
+  (:export
+   #:coalton-parse-error                ; CONDITION
+   #:coalton-parse-error-form           ; READER
+   #:coalton-parse-error-reason-control ; READER
+   #:coalton-parse-error-reason-args    ; READER
+   #:coalton-type-error                 ; CONDITION
+   #:unification-error                  ; CONDITION
+   #:unification-error-first-type       ; READER
+   #:unification-error-second-type      ; READER
+   #:type-mismatch                      ; CONDITION
+   #:type-mismatch-types                ; READER
+   #:arity-mismatch                     ; CONDITION
+   #:arity-mismatch-arities             ; READER
+   #:non-terminating-unification-error  ; CONDITION
+   #:non-terminating-unification-error-contained-type
+                                        ; READER
+   #:non-terminating-unification-error-containing-type
+                                        ; READER
+   ))
 
 (defpackage #:coalton-global-symbols
   (:documentation "A place that global value names are stashed. We don't use uninterned symbols so that they can be reified through the compilation process.")

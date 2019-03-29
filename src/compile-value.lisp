@@ -2,41 +2,8 @@
 
 (in-package #:coalton-impl)
 
-;;; ## Value Analysis
-;;;
-;;; For values, we follow the usual grammar for the simply typed
-;;; lambda calculus, with a modicum of practical extensions. The
-;;; precise grammar is:
-;;;
-;;;     <atom> := <CL INTEGER>
-;;;             | <CL STRING>
-;;;             | ...
-;;;
-;;;     <expr> := <atom>
-;;;             | <variable>         ; variable
-;;;             | (<expr> <expr> ...)
-;;;                                  ; application
-;;;             | (fn (<variable> ...) <expression>)
-;;;                                  ; abstraction
-;;;             | (let ((<variable> <expression>) ...) <expression>)
-;;;                                  ; lexical binding
-;;;             | (if <expr> <expr> <expr>)
-;;;                                  ; conditional
-;;;             | (progn <expr> ...) ; sequence
-;;;             | (lisp <type> <expr>)
-;;;                                  ; Lisp escape
-;;;             | (letrec ((<variable> <expression>) ...) <expression>)
-;;;
-;;; TODO: Some syntax isn't accounted for:
-;;;
-;;;          - Top-level syntax
-;;;          - All of the desired atomic data
-;;;          - Variable declarations
-;;;          - Literal syntax for some constructors
-;;;
-
 (defun compile-value-to-lisp (value)
-  "Compile the node VALUE into Lisp."
+  "Compile the node VALUE into a Lisp form."
   (check-type value node)
   (labels ((analyze (expr)
              (etypecase expr

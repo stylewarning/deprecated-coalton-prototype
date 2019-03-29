@@ -2,6 +2,29 @@
 
 (in-package #:coalton-impl)
 
+;;; For values, we follow the usual grammar for the simply typed
+;;; lambda calculus, with a modicum of practical extensions. The
+;;; precise grammar is:
+;;;
+;;;     <atom> := <CL INTEGER>
+;;;             | <CL STRING>
+;;;
+;;;     <expr> := <atom>
+;;;             | <variable>         ; variable
+;;;             | (<expr> <expr> ...)
+;;;                                  ; application
+;;;             | (fn (<variable> ...) <expression>)
+;;;                                  ; abstraction
+;;;             | (let ((<variable> <expression>) ...) <expression>)
+;;;                                  ; lexical binding
+;;;             | (if <expr> <expr> <expr>)
+;;;                                  ; conditional
+;;;             | (progn <expr> ...) ; sequence
+;;;             | (lisp <type> <expr>)
+;;;                                  ; Lisp escape
+;;;             | (letrec ((<variable> <expression>) ...) <expression>)
+;;;
+
 (defun parse-form (form)
   "Parse the value form FORM into a NODE structure. This also performs macro-expansion.
 
@@ -12,7 +35,7 @@ This does not attempt to do any sort of analysis whatsoever. It is suitable for 
                 (etypecase expr
                   (null    (error-parsing expr "NIL is not allowed!"))
                   (symbol  (parse-variable expr))
-                  ((or integer string)
+                  (literal-value
                    (parse-atom expr))))
                ((alexandria:proper-list-p expr)
                 (alexandria:destructuring-case expr

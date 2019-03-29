@@ -50,8 +50,13 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;; The types of nodes ;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(deftype literal-value ()
+  "Allowed literal values as Lisp objects."
+  '(or integer string))
+
 (define-node-type node-literal
-  (value t))
+  "A literal value. These include things like integers and strings."
+  (value literal-value))
 
 (define-node-type node-variable
   (name symbol))
@@ -89,6 +94,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Unparsing ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun unparse-node (node)
+  "Reconstruct the S-expression representation of a node NODE."
   (etypecase node
     (node-literal
      (node-literal-value node))
