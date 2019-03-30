@@ -8,7 +8,6 @@
   (define-type Unit
     Singleton)
 
-  ;; Defined in early-types.lisp
   (define-type coalton:Boolean
     coalton:True
     coalton:False)
@@ -43,7 +42,6 @@
   (cl:if x coalton:true coalton:false))
 
 
-
 ;;; Erroring
 (coalton-toplevel
  (declare error (-> String t))
@@ -56,11 +54,13 @@
   (define (identity x) x)
   (define (constantly x) (fn (y) x))
   (define (flip f) (fn (x y) (f y x)))
-  (define (compose f g) (fn (x) (f (g x)))))
+  (define (compose f g) (fn (x) (f (g x))))
+  (define (curry f) (fn (x) (fn (y) (f x y)))))
 
 ;;; Boolean
 (coalton-toplevel
-  (define (not x) (if x False True)))
+  (define (not x) (if x False True))
+  (define (complement f) (compose not f)))
 
 ;;; Strings
 (coalton-toplevel
@@ -112,38 +112,73 @@
 
 ;;; Random examples
 (coalton-toplevel
-  (define (fact n)
-    (letrec ((fact-aux (fn (n answer)
-                         (if (zerop n)
-                             answer
-                             (fact-aux (1- n) (* n answer))))))
-      (fact-aux n 1)))
+  (define (fact1 n)
+    (letrec ((%fact (fn (n answer)
+                      (if (zerop n)
+                          answer
+                          (%fact (1- n) (* n answer))))))
+      (%fact n 1)))
 
   (define (car x)
     (match x
-      ((Kons a b) a)
-      (Knil       (error "Can't take CAR of KNIL"))))
+      (Knil       (error "Can't take CAR of KNIL"))
+      ((Kons a b) a)))
 
   (define (cdr x)
     (match x
-      ((Kons a b) b)
-      (Knil       Knil)))
+      (Knil       Knil)
+      ((Kons a b) b)))
 
+  ;; (define (length l)  (fold (fn (x acc) (1+ acc)) 0 l))
   (define (length l)
-    (letrec ((len (fn (l n)
-                    (match l
-                      ((Kons a b)
-                       (len b (1+ n)))
-                      (Knil
-                       n)))))
-      (len l 0)))
+    (letrec ((%length
+              (fn (l n)
+                (match l
+                  (Knil       n)
+                  ((Kons a b) (%length b (1+ n)))))))
+      (%length l 0)))
 
   (define (map f x)
     (match x
-      ((Kons a b) (Kons (f a) (map f b)))
-      (Knil       Knil)))
+      (Knil       Knil)
+      ((Kons x xs) (Kons (f x) (map f xs)))))
 
-  (define (mapper f) (fn x (map f x))))
+  (define (mapper f) (fn x (map f x)))
+
+  (define (fold f init l)
+    (match l
+      (Knil        init)
+      ((Kons x xs) (fold f (f x init) xs))))
+
+  (define (tabulate f n)
+    (letrec ((%tabulate
+              (fn (n l)
+                (if (zerop n)
+                    l
+                    (%tabulate (1- n)
+                               (Kons (f (1- n)) l))))))
+      (%tabulate n Knil))))
+
+(coalton-toplevel
+  (define (reverse l) (fold Kons Knil l))
+  (define (sum l)     (fold + 0 l))
+  (define (product l) (fold * 1 l))
+
+  (define (keep-if f l)                 ; AKA filter
+    (fold (fn (x acc)
+            (if (f x)
+                (Kons x acc)
+                acc))
+          Knil
+          l))
+
+  (define (remove-if f l) (keep-if (complement f) l))
+
+  (define (replicate x n) (tabulate (constantly x) n))
+  (define (iota n) (tabulate identity n))
+  (define (range a b) (tabulate ((curry +) a) (- b a)))
+
+  (define (fact2 n) (product (range 1 (1+ n)))))
 
 ;; Grab Bag
 (coalton-toplevel
