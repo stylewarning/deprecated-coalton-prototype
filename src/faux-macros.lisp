@@ -51,6 +51,7 @@
 (define-coalton-editor-macro coalton:letrec (bindings &body form)
   "A lexical, recursive LET binding.")
 
+#+#:phase-out-if
 (define-coalton-editor-macro coalton:if (test then else)
   "A conditional construct.")
 

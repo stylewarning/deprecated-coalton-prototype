@@ -9,10 +9,9 @@
     Singleton)
 
   ;; Defined in early-types.lisp
-  #+ignore
-  (define-type Boolean
-    True
-    False)
+  (define-type coalton:Boolean
+    coalton:True
+    coalton:False)
 
   ;; Defined in early-types.lisp
   #+ignore
@@ -33,6 +32,17 @@
   (define-type (Binary-Tree s t)
     (Leaf s)
     (Branch t (Binary-Tree s t) (Binary-Tree s t))))
+
+(cl:defmacro coalton:if (expr then else)
+  `(match ,expr
+     (coalton:true ,then)
+     (coalton:false ,else)))
+
+(cl:declaim (cl:inline lisp-boolean-to-coalton-boolean))
+(cl:defun lisp-boolean-to-coalton-boolean (x)
+  (cl:if x coalton:true coalton:false))
+
+
 
 ;;; Erroring
 (coalton-toplevel
@@ -65,7 +75,7 @@
 (coalton-toplevel
   (declare = (-> (Integer Integer) Boolean))
   (define (= x y) (lisp Boolean
-                    (coalton-impl::lisp-boolean-to-coalton-boolean
+                    (lisp-boolean-to-coalton-boolean
                      (cl:= x y))))
 
   (define (zerop x) (= x 0))

@@ -102,7 +102,7 @@
                         :for defn-ty :in defn-tys
                         :do (unify tyvar defn-ty))
                   (analyze subexpr gamma* non-generic))
-                #+single-variable ; (LETREC VAR VAL SUBEXPR)
+                #+#:single-variable ; (LETREC VAR VAL SUBEXPR)
                 (let* ((var (node-letrec-var expr))
                        (val (node-letrec-val expr))
                        (subexpr (node-letrec-subexpr expr))
@@ -112,6 +112,7 @@
                   (unify new-ty defn-ty)
                   (analyze subexpr new-env non-generic)))
 
+               #+#:phase-out-if
                (node-if
                 (let ((test-ty (analyze (node-if-test expr) env non-generic)))
                   (unify boolean-type test-ty)

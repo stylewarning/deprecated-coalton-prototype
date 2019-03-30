@@ -154,6 +154,7 @@
      `(coalton:letrec ,(loop :for (var . val) :in (node-letrec-bindings node)
                              :collect (list var (unparse-node val)))
         ,(unparse-node (node-letrec-subexpr node))))
+    #+#:phase-out-if
     (node-if
      `(coalton:if ,(unparse-node (node-if-test node))
                   ,(unparse-node (node-if-then node))

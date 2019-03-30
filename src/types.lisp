@@ -8,11 +8,10 @@
   "A constructor for type applications."
   (name (required 'name) :type symbol                 :read-only t)
   (arity 0               :type unsigned-byte          :read-only t)
-  ;; A list of (CONSTRUCTOR-NAME . PREDICATE-NAME) pairs.
+  ;; A list of CONSTRUCTOR-NAMEs.
   ;;
   ;; The CONSTRUCTOR-NAME names a known function that constructs a
-  ;; value of TYCON type. The PREDICATE-NAME also names a known
-  ;; function that tests whether an object is this particular summand.
+  ;; value of TYCON type.
   ;;
   ;; This isn't read-only because we might set it later. It would be
   ;; nice to make it read-only though.
@@ -45,7 +44,7 @@
 (defun find-tycon-for-ctor (name)
   (loop :for tycon-name :being :the :hash-keys :of **type-definitions**
           :using (hash-value tycon)
-        :when (find name (tycon-constructors tycon) :key #'car)
+        :when (find name (tycon-constructors tycon))
           :do (return tycon)
         :finally (return nil)))
 
@@ -87,7 +86,6 @@
   (cond
     ((function-type-p x) (tyfun-arity x))
     (t                   0)))
-
 
 #+sbcl (declaim (sb-ext:freeze-type ty tyvar tyapp tyfun))
 

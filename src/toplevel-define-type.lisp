@@ -82,11 +82,9 @@ where
   ;;
   ;; CTORS: The parsed constructors (see above).
   (let* ((tycon-name (tycon-name tycon))
-         (ctor-names (mapcar #'second ctors))
-         (pred-names (loop :for ctor-name :in ctor-names
-                           :collect (alexandria:format-symbol nil "~A-P" ctor-name))))
-    ;; Record the ctors and predicates.
-    (setf (tycon-constructors tycon) (mapcar #'cons ctor-names pred-names))
+         (ctor-names (mapcar #'second ctors)))
+    ;; Record the ctors.
+    (setf (tycon-constructors tycon) ctor-names)
 
     ;; Make the tycon known. We clobber it if it exists.
     (setf (find-tycon tycon-name) tycon)
@@ -97,12 +95,6 @@ where
                 (forward-declare-variable name))
               (setf (var-declared-type name) ty))
 
-    ;; Declare the predicates
-    (loop :with pred-ty := (make-function-type generic-ty boolean-type)
-          :for (_ . pred-name) :in (tycon-constructors tycon)
-          :do (unless (var-knownp pred-name)
-                (forward-declare-variable pred-name))
-              (setf (var-declared-type pred-name) pred-ty))
     ;; Compile into sensible Lisp.
     ;;
     ;; TODO: Structs? Vectors? Classes? This should be thought
@@ -157,10 +149,6 @@ where
                              `(defun ,name ,args
                                 (make-instance ',name :value (vector ,@args)))
                              `(define-global-var* ,name #',name))))))
-       ;; Define predicates
-       ,@(loop :for (ctor-name . pred-name) :in (tycon-constructors tycon)
-               :collect `(defun ,pred-name (object)
-                           (typep object ',ctor-name)))
        ',tycon-name)))
 
 (defun process-toplevel-type-definitions (deftype-forms)

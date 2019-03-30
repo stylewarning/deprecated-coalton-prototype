@@ -83,6 +83,7 @@
                       ;; Now return the built lisp expression.
                       lisp-expr))))
 
+               #+#:phase-out-if
                (node-if
                 `(if (eql coalton:true ,(analyze (node-if-test expr)))
                      ,(analyze (node-if-then expr))

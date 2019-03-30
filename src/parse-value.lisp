@@ -55,6 +55,7 @@ This does not attempt to do any sort of analysis whatsoever. It is suitable for 
                    (parse-let bindings subexpr))
                   ((coalton:letrec bindings subexpr)
                    (parse-letrec bindings subexpr))
+                  #+#:phase-out-if
                   ((coalton:if test then else)
                    (parse-if test then else))
                   ((coalton:lisp type lisp-expr)
@@ -87,6 +88,7 @@ This does not attempt to do any sort of analysis whatsoever. It is suitable for 
                                 :collect (cons bind-var (parse bind-val)))
                           (parse subexpr)))
 
+           #+#:phase-out-if
            (parse-if (test then else)
              (node-if (parse test)
                       (parse then)
