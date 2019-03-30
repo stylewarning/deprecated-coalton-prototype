@@ -109,13 +109,11 @@
                              (fact-aux (1- n) (* n answer))))))
       (fact-aux n 1)))
 
-  (declare car (-> ((Liszt t)) t))
   (define (car x)
     (match x
       ((Kons a b) a)
       (Knil       (error "Can't take CAR of KNIL"))))
 
-  (declare cdr (-> ((Liszt t)) (Liszt t)))
   (define (cdr x)
     (match x
       ((Kons a b) b)

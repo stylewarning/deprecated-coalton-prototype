@@ -115,10 +115,7 @@
     (tyfun
      (let ((from (mapcar #'unparse-type (tyfun-from ty)))
            (to (unparse-type (tyfun-to ty))))
-       (cond
-         ((endp from)        `(coalton:-> () ,to))
-         ((endp (rest from)) `(coalton:-> ,(first from) ,to))
-         (t                  `(coalton:-> ,from ,to)))))))
+       `(coalton:-> ,from ,to)))))
 
 (defun prune (ty)
   (etypecase ty
