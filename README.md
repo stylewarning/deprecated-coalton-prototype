@@ -1,16 +1,21 @@
 # Coalton
 
+_Check out the [**library**](src/library.lisp) to see the latest that Coalton can express!_
+
 Coalton is a dialect of ML embedded in Common Lisp. It emphasizes practicality and interoperability with Lisp, and is intended to be a DSL that allows one to gradually make their programs safer.
 
 Coalton currently allows one to do the following in Common Lisp:
 
-* Express statically typed programs similar in spirit to Standard ML, OCaml, and Haskell.
-* Perform compile-time type inference and type checking à la Hindley-Milner type inference.
-  * Global values are inferred by default, but can be manually declared if desired.
-* Interoperate an ML-like with Common Lisp, in both directions. All data values are native and easy data structures.
-* Define parameterized algebraic data types, including mutually recursive types.
+* Express **statically typed programs** similar in spirit to Standard ML, OCaml, and Haskell.
+* Perform **compile-time type inference and type checking** à la Hindley-Milner type inference.
+  * Optionally, global values can be manually declared if desired.
+* **Interoperate** an ML-like with Common Lisp, in both directions. All data values are native and easy data structures.
+* Define **parameterized algebraic data types**, including mutually recursive types.
+* Define **macros** using the standard `defmacro` facility that is understood by Coalton. (In Coalton, `if` is a macro that expands into a `match` on the `Boolean` type!)
 
-Coalton has some limitations:
+Coalton does not intend to re-define how Lisp is written entirely, but rather it serves to augment Lisp with an additional, available programming dialect.
+
+Coalton is a work-in-progress and has some limitations:
 
 * [bug] Unit tests aren't at all written. USE AT YOUR OWN RISK!
 * [bug] Redefinitions don't play well in a lot of ways:
@@ -20,8 +25,6 @@ Coalton has some limitations:
 * [bug] Nested patterns, guards, and a more elaborate pattern grammar is not implemented.
 * Generalized algebraic data types, type classes, and high-order types are neither implemented nor supported.
 * ML structures, signatures, or functors are neither implemented nor supported.
-
-The project is a work-in-progress. See the [latest thoughts](thoughts.md).
 
 ## Coalton-Lisp Bridge
 
