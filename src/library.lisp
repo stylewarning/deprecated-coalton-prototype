@@ -14,6 +14,8 @@
     True
     False)
 
+  ;; Defined in early-types.lisp
+  #+ignore
   (define-type Void)
 
   (define-type (Maybe t)
@@ -107,43 +109,31 @@
                              (fact-aux (1- n) (* n answer))))))
       (fact-aux n 1)))
 
-  (declare Knil? (-> ((Liszt t)) Boolean))
-  (define (Knil? x)
-    (lisp Boolean
-      (coalton-impl::lisp-boolean-to-coalton-boolean
-       (cl:typep x 'Knil))))
-
-  (declare Kons? (-> ((Liszt t)) Boolean))
-  (define (Kons? x)
-    (lisp Boolean
-      (coalton-impl::lisp-boolean-to-coalton-boolean
-       (cl:typep x 'Kons))))
-
   (declare car (-> ((Liszt t)) t))
   (define (car x)
-    (if (Knil? x)
-        (error "Can't take CAR of KNIL")
-        (lisp t
-          (cl:svref (cl:slot-value x 'coalton-impl::value) 0))))
+    (match x
+      ((Kons a b) a)
+      (Knil       (error "Can't take CAR of KNIL"))))
 
   (declare cdr (-> ((Liszt t)) (Liszt t)))
   (define (cdr x)
-    (if (Knil? x)                       ; match CL behavior
-        Knil
-        (lisp t
-          (cl:svref (cl:slot-value x 'coalton-impl::value) 1))))
+    (match x
+      ((Kons a b) b)
+      (Knil       Knil)))
 
   (define (length l)
     (letrec ((len (fn (l n)
-                    (if (Knil? l)
-                        n
-                        (len (cdr l) (1+ n))))))
+                    (match l
+                      ((Kons a b)
+                       (len b (1+ n)))
+                      (Knil
+                       n)))))
       (len l 0)))
 
   (define (map f x)
-    (if (Knil? x)
-        Knil
-        (Kons (f (car x)) (map f (cdr x)))))
+    (match x
+      ((Kons a b) (Kons (f a) (map f b)))
+      (Knil       Knil)))
 
   (define (mapper f) (fn x (map f x))))
 

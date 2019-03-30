@@ -17,7 +17,7 @@ Coalton has some limitations:
   * Types aren't globally re-checked or warned about.
   * The internal type DB is frequently clobbered with new data.
 * [bug] Declared types *are* used for inference, but are simply believed without question. As such, a bug in a declaration will cause *runtime* bugs.
-* [bug] Pattern matching is not yet implemented.
+* [bug] Nested patterns, guards, and a more elaborate pattern grammar is not implemented.
 * Generalized algebraic data types, type classes, and high-order types are neither implemented nor supported.
 * ML structures, signatures, or functors are neither implemented nor supported.
 

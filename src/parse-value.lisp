@@ -23,6 +23,16 @@
 ;;;             | (lisp <type> <expr>)
 ;;;                                  ; Lisp escape
 ;;;             | (letrec ((<variable> <expression>) ...) <expression>)
+;;;             | <match>
+;;;
+;;; The pattern matching syntax is as follows:
+;;;
+;;;   <match> ::= (match <expr> <clause>*)
+;;;
+;;;   <clause> ::= (<pattern> <expr>)
+;;;
+;;;   <pattern> ::= <nullary-ctor>
+;;;               | (<nary-ctor> <variable>+)
 ;;;
 
 (defun parse-form (form)
@@ -51,6 +61,8 @@ This does not attempt to do any sort of analysis whatsoever. It is suitable for 
                    (parse-lisp type lisp-expr))
                   ((coalton:progn &rest exprs)
                    (parse-sequence exprs))
+                  ((coalton:match value &rest clauses)
+                   (parse-match value clauses))
                   ((t &rest rands)
                    (parse-application (first expr) rands))))
                (t (error-parsing expr "The expression is not a valid value expression."))))
@@ -95,5 +107,69 @@ This does not attempt to do any sort of analysis whatsoever. It is suitable for 
                (t
                 (node-application
                  (parse rator)
-                 (loop :for rand :in rands :collect (parse rand)))))))
+                 (loop :for rand :in rands :collect (parse rand))))))
+
+           ;; Everything below this comment is for parsing
+           ;; COALTON:MATCH. This is by far the most complicated
+           ;; syntactic construct.
+           (parse-match (value clauses)
+             (cond
+               ((endp clauses)
+                (node-match (parse value)
+                            (find-tycon 'coalton:void)
+                            '()))
+               (t
+                (let ((parsed-clauses nil)
+                      (tycon          nil))
+                  (dolist (clause clauses)
+                    (multiple-value-bind (parsed-clause this-tycon)
+                        (parse-match-clause clause)
+                      (cond
+                        ((null tycon)
+                         (setf tycon this-tycon))
+                        ((not (eq this-tycon tycon))
+                         (error-parsing `(coalton:match ,value ,@clauses)
+                                        "tycon mismatch in match clauses")))
+                      (push parsed-clause parsed-clauses)))
+                  ;; TODO: perform exhaustiveness checking and
+                  ;; redundancy checking.
+                  (node-match (parse value)
+                              tycon
+                              (nreverse parsed-clauses))))))
+
+           (parse-match-clause (clause)
+             (unless (= 2 (length clause))
+               (error-parsing clause "Invalid clause. Must be of the form (<pattern> <value>)."))
+             (destructuring-bind (pattern value) clause
+               (multiple-value-bind (parsed-pattern tycon) (parse-pattern pattern)
+                 (values (make-match-clause :pattern parsed-pattern
+                                            :value (parse value))
+                         tycon))))
+
+           (parse-pattern (pattern)
+             (unless (or (symbolp pattern)
+                         (and (symbol-list-p pattern)
+                              (not (endp pattern))))
+               (error-parsing pattern "Invalid pattern syntax."))
+             ;; Normalize it into a list.
+             (setf pattern (alexandria:ensure-list pattern))
+             ;; Parse it all out.
+             (destructuring-bind (ctor-name &rest pattern-variables) pattern
+               ;; Patterns must be linear.
+               (unless (alexandria:setp pattern-variables)
+                 (error-parsing pattern "Pattern variables must be distinct."))
+               ;; We must have a CTOR defined.
+               (let ((tycon (find-tycon-for-ctor ctor-name)))
+                 (when (null tycon)
+                   (error-parsing pattern "The constructor ~S is unknown." ctor-name))
+                 (unless (= (type-arity (var-declared-type ctor-name))
+                            (length pattern-variables))
+                   (error-parsing pattern
+                                  "The pattern has ~D variable~:P but the ~
+                                   constructor ~S has arity ~D."
+                                  (length pattern-variables)
+                                  ctor-name
+                                  (type-arity (var-declared-type ctor-name))))
+                 (values (ctor-pattern ctor-name pattern-variables)
+                         tycon)))))
     (parse form)))

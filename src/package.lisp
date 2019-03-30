@@ -13,6 +13,7 @@
    #:define-type)
   (:export
    #:->
+   #:void
    #:integer
    #:string
    #:boolean #:true #:false
@@ -25,7 +26,8 @@
    #:let
    #:letrec
    #:if
-   #:lisp)
+   #:lisp
+   #:match)
   (:export
    #:type-of))
 

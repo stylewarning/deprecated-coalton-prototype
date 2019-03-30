@@ -150,7 +150,52 @@
                                        :collect (analyze rand env non-generic)))
                         (ret-ty  (make-variable)))
                     (unify (make-function-type arg-tys ret-ty) fun-ty)
-                    ret-ty))))))
+                    ret-ty)))
+
+               (node-match
+                (let* ((value (node-match-value expr))
+                       (clauses (node-match-clauses expr))
+                       (expected-tycon (node-match-tycon expr))
+                       (expected-var-tys (loop :repeat (tycon-arity expected-tycon)
+                                               :collect (make-variable)))
+                       (expected-value-ty
+                         (apply #'tyapp expected-tycon expected-var-tys))
+                       (value-ty (analyze value env non-generic)))
+                  ;; Go through each of the clauses, create fresh
+                  ;; variables for the binding sites, and unify with
+                  ;; those.
+                  (let ((result-ty nil))
+                    (dolist (clause clauses)
+                      (let ((pat (match-clause-pattern clause))
+                            (val (match-clause-value clause)))
+                        (etypecase pat
+                          (ctor-pattern
+                           (let* ((vars (ctor-pattern-variables pat))
+                                  (pat-ty (var-declared-type (ctor-pattern-ctor pat)))
+                                  (var-tys (loop :repeat (length vars)
+                                                 :collect (make-variable)))
+                                  (res-ty (analyze val
+                                                   (assoc-add* env vars var-tys)
+                                                   (set-add* non-generic var-tys))))
+                             ;; Unify with previous clause values.
+                             (cond
+                               ((null result-ty)
+                                (setf result-ty res-ty))
+                               (t
+                                (unify result-ty res-ty)))
+                             ;; Now unify what we know is our declared
+                             ;; type for the pattern with what we
+                             ;; learned about the variables.
+                             (unless (endp vars)
+                               (unify pat-ty
+                                      (make-function-type var-tys expected-value-ty))))))))
+                    ;; Unify our value's type with what we expect
+                    ;; simply from the constructors
+                    ;; used. EXPECTED-VALUE-TY will have accumulated
+                    ;; unifications.
+                    (unify value-ty expected-value-ty)
+                    ;; Return the type of the entire expression.
+                    result-ty))))))
     (analyze value nil nil)))
 
 (defun coalton:type-of (global-name)

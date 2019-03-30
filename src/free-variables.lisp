@@ -52,6 +52,15 @@ NOTE: Just because a variable shows up in the list does *NOT* mean all occurrenc
                  (node-application
                   (let ((rator (node-application-rator expr))
                         (rands (node-application-rands expr)))
-                    (mapc (lambda (expr) (analyze expr bv)) (cons rator rands)))))))
+                    (mapc (lambda (expr) (analyze expr bv)) (cons rator rands))))
+
+                 (node-match
+                  (let ((value (node-match-value expr))
+                        (clauses (node-match-clauses expr)))
+                    (analyze value bv)
+                    (dolist (clause clauses)
+                      (analyze (match-clause-value clause)
+                               (union bv (ctor-pattern-variables
+                                          (match-clause-pattern clause))))))))))
       (analyze value nil)
       fv)))

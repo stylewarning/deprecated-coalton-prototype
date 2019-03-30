@@ -22,7 +22,7 @@
        (every #'node-p x)))
 
 (deftype node-list ()
-  `(satisfies node-list-p))
+  '(satisfies node-list-p))
 
 (defun binding-list-p (x)
   (and (alexandria:proper-list-p x)
@@ -36,7 +36,7 @@
        (every #'symbolp x)))
 
 (deftype symbol-list ()
-  `(satisfies symbol-list-p))
+  '(satisfies symbol-list-p))
 
 (defmacro define-node-type (name &body slots)
   (multiple-value-bind (slots decls doc) (alexandria:parse-body slots :documentation t)
@@ -90,6 +90,46 @@
   (type ty)
   (form t))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; Match Nodes ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; Patterns
+
+(defstruct (ctor-pattern (:constructor ctor-pattern (ctor variables)))
+  (ctor (required 'ctor) :type symbol :read-only t)
+  variables)
+
+(defun unparse-pattern (pat)
+  (etypecase pat
+    (ctor-pattern (let ((vars (ctor-pattern-variables pat)))
+                    (if (endp vars)
+                        (ctor-pattern-ctor pat)
+                        `(,(ctor-pattern-ctor pat) ,@vars))))))
+
+;;; Clauses
+
+(defstruct match-clause
+  (pattern nil :read-only t)
+  (value (required 'value) :type node :read-only t))
+
+(defun match-clause-list-p (x)
+  (and (alexandria:proper-list-p x)
+       (every #'match-clause-p x)))
+
+(deftype match-clause-list ()
+  '(satisfies match-clause-list-p))
+
+(defun unparse-match-clause (mc)
+  (check-type mc match-clause)
+  `(,(unparse-pattern (match-clause-pattern mc))
+    ,(unparse-node (match-clause-value mc))))
+
+;;; The match node
+
+(define-node-type node-match
+  (value node)
+  (tycon tycon)
+  (clauses match-clause-list))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Unparsing ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -123,4 +163,7 @@
         ,@(mapcar #'unparse-node (node-sequence-exprs node))))
     (node-lisp
      `(coalton:lisp ,(unparse-type (node-lisp-type node))
-        ,(node-lisp-form node)))))
+        ,(node-lisp-form node)))
+    (node-match
+     `(coalton:match ,(unparse-node (node-match-value node))
+        ,@(mapcar #'unparse-match-clause (node-match-clauses node))))))

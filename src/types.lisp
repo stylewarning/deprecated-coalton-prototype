@@ -42,6 +42,12 @@
     (warn "Clobbering tycon ~S" tycon-name))
   (setf (gethash tycon-name **type-definitions**) new-value))
 
+(defun find-tycon-for-ctor (name)
+  (loop :for tycon-name :being :the :hash-keys :of **type-definitions**
+          :using (hash-value tycon)
+        :when (find name (tycon-constructors tycon) :key #'car)
+          :do (return tycon)
+        :finally (return nil)))
 
 ;;; TY is forward declared in node.lisp
 
@@ -76,6 +82,12 @@
   "Does the type TY represent a function type?"
   (check-type ty ty)
   (typep ty 'tyfun))
+
+(defun type-arity (x)
+  (cond
+    ((function-type-p x) (tyfun-arity x))
+    (t                   0)))
+
 
 #+sbcl (declaim (sb-ext:freeze-type ty tyvar tyapp tyfun))
 
@@ -234,7 +246,7 @@
 
 (defun unify (type1 type2)
   ;; We use LABELS just so we can have a copy of the original TYPE1
-  ;; and TYPE2 for error reporting purposes..
+  ;; and TYPE2 for error reporting purposes.
   (labels ((%unify (ty1 ty2)
              (let ((pty1 (prune ty1))
                    (pty2 (prune ty2)))

@@ -8,6 +8,11 @@
   "Make a function type mapping FROM to TO. Equivalent to (-> FROM TO)."
   (tyfun (alexandria:ensure-list from) to))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; VOID ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; Needed for pattern matching with no clauses.
+(define-type-constructor coalton:void 0)
+(define-global-var* void-type (tyapp (find-tycon 'coalton:void)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; INTEGER ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

@@ -51,6 +51,7 @@ EXTRA-TYCONS is a list of tycons that are perhaps not globally defined yet. Thes
                        (error-parsing whole-expr "Invalid part of type expression: ~S" tycon))
                      (unless (knownp tycon)
                        (error-parsing whole-expr "Unknown type constructor ~S" tycon))
+                     ;; TODO: Make sure arity is correct!
                      (apply #'tyapp
                             (find-it tycon)
                             (mapcar #'parse args)))))

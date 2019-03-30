@@ -98,5 +98,29 @@
                (node-application
                 (let ((rator (analyze (node-application-rator expr)))
                       (rands (mapcar #'analyze (node-application-rands expr))))
-                  `(funcall ,rator ,@rands))))))
+                  `(funcall ,rator ,@rands)))
+
+               (node-match
+                (let ((value (gensym "VALUE"))
+                      (slots (gensym "SLOTS")))
+                  `(let ((,value ,(analyze (node-match-value expr))))
+                     (cond
+                       ,@(loop :for clause :in (node-match-clauses expr)
+                               :for pattern := (match-clause-pattern clause)
+                               :for result := (match-clause-value clause)
+                               :for ctor := (ctor-pattern-ctor pattern)
+                               :for vars := (ctor-pattern-variables pattern)
+                               :if (null vars)
+                                 :collect `((typep ,value ',ctor)
+                                            ,(analyze result))
+                               :else
+                                 :collect (let ()
+                                            `((typep ,value ',ctor)
+                                              (let* ((,slots (cl:slot-value ,value 'coalton-impl::value))
+                                                     ,@(loop :for i :from 0
+                                                             :for var :in vars
+                                                             :collect `(,var (svref ,slots ,i))))
+                                                (declare (ignorable ,@vars))
+                                                ,(analyze result)))))
+                       (t (error "match error")))))))))
     (analyze value)))
