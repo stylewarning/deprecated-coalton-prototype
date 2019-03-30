@@ -50,12 +50,12 @@
 
 ;;; Combinators
 (coalton-toplevel
-  (define (ignore x) Singleton)
-  (define (identity x) x)
+  (define (ignore x)     Singleton)
+  (define (identity x)   x)
   (define (constantly x) (fn (y) x))
-  (define (flip f) (fn (x y) (f y x)))
-  (define (compose f g) (fn (x) (f (g x))))
-  (define (curry f) (fn (x) (fn (y) (f x y)))))
+  (define (flip f)       (fn (x y) (f y x)))
+  (define (compose f g)  (fn (x) (f (g x))))
+  (define (curry f)      (fn (x) (fn (y) (f x y)))))
 
 ;;; Boolean
 (coalton-toplevel
