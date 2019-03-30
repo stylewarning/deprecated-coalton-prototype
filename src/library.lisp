@@ -78,6 +78,18 @@
                     (lisp-boolean-to-coalton-boolean
                      (cl:= x y))))
 
+  (declare > (-> (Integer Integer) Boolean))
+  (define (> x y) (lisp Boolean
+                    (lisp-boolean-to-coalton-boolean
+                     (cl:> x y))))
+
+  (declare evenp (-> (Integer) Boolean))
+  (define (evenp n) (lisp Boolean
+                      (lisp-boolean-to-coalton-boolean
+                       (cl:evenp n))))
+
+  (define (oddp n) (not (evenp n)))
+
   (define (zerop x) (= x 0))
 
   (declare + (-> (Integer Integer) Integer))
@@ -91,9 +103,12 @@
 
   (declare * (-> (Integer Integer) Integer))
   (define (* x y) (lisp Integer (cl:* x y)))
+  (define (double n) (* n 2))
 
   (declare / (-> (Integer Integer) Integer))
   (define (/ x y) (lisp Integer (cl:values (cl:floor x y))))
+  (define (half n) (/ n 2))
+
   (define (safe-/ x y) (if (zerop y)
                            Nothing
                            (Just (/ x y)))))
@@ -109,6 +124,24 @@
       (cl:progn
         (cl:setf (cl:svref (cl:slot-value r 'coalton-impl::value) 0) v)
         Singleton))))
+
+(coalton-toplevel
+  (define (gcd u v)
+    (if (= u v)
+        u
+        (if (zerop u)
+            v
+            (if (zerop v)
+                u
+                (if (evenp u)
+                    (if (evenp v)
+                        (double (gcd (half u) (half v)))
+                        (gcd (half u) v))
+                    (if (evenp v)
+                        (gcd u (half v))
+                        (if (> u v)
+                            (gcd (half (- u v)) v)
+                            (gcd (half (- v u)) u)))))))))
 
 ;;; Random examples
 (coalton-toplevel
