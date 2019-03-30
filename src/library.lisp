@@ -71,27 +71,32 @@
   (declare string-length (-> String Integer))
   (define (string-length s) (lisp Integer (cl:length s))))
 
+;;; Comparators and Predicates
+(cl:macrolet ((define-comparators (cl:&rest names)
+                `(coalton-toplevel
+                   ,@(cl:loop
+                        :for op :in names
+                        :for clop := (cl:intern (cl:symbol-name op) :cl)
+                        :append (cl:list
+                                 `(declare ,op (-> (Integer Integer) Boolean))
+                                 `(define (,op x y) (lisp Boolean
+                                                      (lisp-boolean-to-coalton-boolean
+                                                       (,clop x y))))))))
+              (define-predicates (cl:&rest names)
+                `(coalton-toplevel
+                   ,@(cl:loop
+                        :for op :in names
+                        :for clop := (cl:intern (cl:symbol-name op) :cl)
+                        :append (cl:list
+                                 `(declare ,op (-> (Integer) Boolean))
+                                 `(define (,op x) (lisp Boolean
+                                                    (lisp-boolean-to-coalton-boolean
+                                                     (,clop x)))))))))
+  (define-comparators = /= > < >= <=)
+  (define-predicates evenp oddp plusp minusp zerop))
+
 ;;; Arithmetic
 (coalton-toplevel
-  (declare = (-> (Integer Integer) Boolean))
-  (define (= x y) (lisp Boolean
-                    (lisp-boolean-to-coalton-boolean
-                     (cl:= x y))))
-
-  (declare > (-> (Integer Integer) Boolean))
-  (define (> x y) (lisp Boolean
-                    (lisp-boolean-to-coalton-boolean
-                     (cl:> x y))))
-
-  (declare evenp (-> (Integer) Boolean))
-  (define (evenp n) (lisp Boolean
-                      (lisp-boolean-to-coalton-boolean
-                       (cl:evenp n))))
-
-  (define (oddp n) (not (evenp n)))
-
-  (define (zerop x) (= x 0))
-
   (declare + (-> (Integer Integer) Integer))
   (define (+ x y) (lisp Integer (cl:+ x y)))
   (define (1+ x) (+ 1 x))
