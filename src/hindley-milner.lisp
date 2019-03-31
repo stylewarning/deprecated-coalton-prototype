@@ -28,7 +28,7 @@
     (setf set (set-add set item))))
 
 (defun error-unknown-symbol (name)
-  (error-parsing name "Undefined symbol"))
+  (error "Undefined symbol: ~S" name))
 
 (defun lookup-type (name env non-generic &key (continue 'error-unknown-symbol))
   (alexandria:if-let ((var (assoc-find env name)))
@@ -37,7 +37,7 @@
         (let ((entry (var-info name)))
           (fresh (or (entry-declared-type entry)
                      (entry-derived-type entry)
-                     (error-parsing name "Couldn't determine type of known variable."))))
+                     (error "Couldn't determine type of known variable ~S." name))))
         (funcall continue name))))
 
 (defun derive-type (value)

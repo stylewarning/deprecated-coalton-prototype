@@ -6,9 +6,9 @@
 
 (defstruct entry
   "An entry in the global value database."
-  internal-name
-  declared-type
-  derived-type
+  (internal-name nil :type symbol)
+  (declared-type nil :type (or null ty))
+  (derived-type nil :type (or null ty))
   source-form
   node)
 
@@ -62,9 +62,17 @@
     (entry-declared-type info)))
 
 (defun (setf var-declared-type) (new-value var)
+  (check-type new-value ty)
   (let ((info (var-info var)))
     (when (entry-declared-type info)
       (warn "Overwriting declared type of ~S" var))
+    (alexandria:when-let ((derived (var-derived-type var)))
+      (unless (more-or-equally-specific-type-p derived new-value)
+        (error "Cannot declare ~S as ~S because that is ~
+                inconsistent with its derived type ~S."
+               var
+               (unparse-type new-value)
+               (unparse-type derived))))
     (setf (entry-declared-type info) new-value)))
 
 (defun var-derived-type (var)
@@ -72,11 +80,18 @@
     (entry-derived-type info)))
 
 (defun (setf var-derived-type) (new-value var)
+  (check-type new-value ty)
   (let ((info (var-info var)))
     (when (entry-derived-type info)
       (warn "Overwriting derived type of ~S" var))
+    (alexandria:when-let ((declared (var-declared-type var)))
+      (unless (more-or-equally-specific-type-p new-value declared)
+        (error "The derived type of ~S, which is ~S, is incompatible ~
+                with its previously declared type ~S."
+               var
+               (unparse-type new-value)
+               (unparse-type declared))))
     (setf (entry-derived-type info) new-value)))
-
 
 ;;;;;;;;;;;;;;;;;;;;;; Global Type Definitions ;;;;;;;;;;;;;;;;;;;;;;;
 

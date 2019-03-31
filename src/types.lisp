@@ -89,6 +89,38 @@
 
 #+sbcl (declaim (sb-ext:freeze-type ty tyvar tyapp tyfun))
 
+(defun more-or-equally-specific-type-p (general specific)
+  "Is the type SPECIFIC an equal or more specific instantiation of GENERAL?"
+  (check-type general ty)
+  (check-type specific ty)
+  (etypecase general
+    ;; Anything could exist for SPECIFIC and it would be no more
+    ;; general than GENERAL.
+    (tyvar
+     (or (null (tyvar-instance general))
+         (more-or-equally-specific-type-p (tyvar-instance general) specific)))
+    ;; TYAPPs and TYFUNs are only compatible with the same one.
+    (tyapp
+     (etypecase specific
+       (tyvar (and (not (null (tyvar-instance specific)))
+                   (more-or-equally-specific-type-p general (tyvar-instance specific))))
+       (tyapp (and (eq (tyapp-constructor general)
+                       (tyapp-constructor specific))
+                   (every #'more-or-equally-specific-type-p
+                          (tyapp-types general)
+                          (tyapp-types specific))))
+       (tyfun nil)))
+    (tyfun
+     (etypecase specific
+       (tyvar (and (not (null (tyvar-instance specific)))
+                   (more-or-equally-specific-type-p general (tyvar-instance specific))))
+       (tyapp nil)
+       (tyfun (and (more-or-equally-specific-type-p
+                    (tyfun-to general) (tyfun-to specific))
+                   (every #'more-or-equally-specific-type-p
+                          (tyfun-from general)
+                          (tyfun-from specific))))))))
+
 (defvar *next-variable-id* 0)
 (defun make-variable ()
   (prog1 (%make-tyvar :id *next-variable-id*)

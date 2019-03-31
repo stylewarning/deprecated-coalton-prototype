@@ -22,9 +22,9 @@ where
     (setf type (alexandria:ensure-list type))
     (destructuring-bind (tycon-name &rest tyvar-names) type
       (assert (symbolp tycon-name))
+      (assert (every #'symbolp tyvar-names))
       (when (tycon-knownp tycon-name)
         (cerror "Clobber the tycon." "Already defined tycon: ~S" tycon-name))
-      (assert (every #'symbolp tyvar-names))
       (list* (make-tycon :name tycon-name :arity (length tyvar-names))
              type
              ctors))))
@@ -76,6 +76,7 @@ where
       (values this-tycon ty (reverse constructors)))))
 
 (defun compile-toplevel-define-type-form (tycon generic-ty ctors)
+  (declare (ignore generic-ty))
   ;; TYCON: The type to define (a TYCON object).
   ;;
   ;; GENERIC-TY: The fully generic type object representing TYCON (a TY object).

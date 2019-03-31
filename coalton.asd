@@ -36,7 +36,7 @@
   :description "Tests for COALTON."
   :author "Robert Smith <robert@stylewarning.com>"
   :license "MIT"
-  :depends-on (#:coalton)
+  :depends-on (#:coalton #:fiasco)
   :perform (asdf:test-op (o s) nil)
   :pathname "tests/"
   :serial t
