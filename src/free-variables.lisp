@@ -38,6 +38,7 @@ NOTE: Just because a variable shows up in the list does *NOT* mean all occurrenc
                          (bv* (union bv vars)))
                     (mapc (lambda (expr) (analyze expr bv*)) (cons subexpr vals))))
 
+                 #+#:phase-out-if
                  (node-if
                   (analyze (node-if-test expr) bv)
                   (analyze (node-if-then expr) bv)
