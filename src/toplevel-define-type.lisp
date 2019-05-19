@@ -101,6 +101,15 @@ where
     ;; TODO: Structs? Vectors? Classes? This should be thought
     ;; about. Let's start with classes.
     `(progn
+       (unless (tycon-knownp ',tycon-name)
+         (setf (find-tycon ',tycon-name) ,tycon))
+
+       ,@(loop :for (_ name ty) :in ctors
+               :collect `(unless (var-knownp ',name)
+                             (forward-declare-variable ',name))
+               :collect `(unless (entry-declared-type (var-info ',name))
+                           (setf (var-declared-type ',name) ,ty)))
+
        ;; Define types. Create the superclass.
        ;;
        ;; TODO: handle special case of 1 ctor.

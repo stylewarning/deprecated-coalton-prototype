@@ -17,6 +17,12 @@
   ;; nice to make it read-only though.
   (constructors nil      :type alexandria:proper-list))
 
+(defmethod make-load-form ((tycon tycon) &optional environment)
+  (declare (ignore environment))
+  `(make-tycon :name ',(tycon-name tycon)
+               :arity ,(tycon-arity tycon)
+               :constructors ',(tycon-constructors tycon)))
+
 ;;; TODO: figure out type aliases.
 (define-global-var **type-definitions** (make-hash-table :test 'eql)
   "Database of Coalton type definitions. These are mappings from symbols to type constructors.")
@@ -57,11 +63,21 @@
   (instance nil :type (or null ty)     :read-only nil)
   (name     nil :type (or null symbol) :read-only nil))
 
+(defmethod make-load-form ((tyvar tyvar) &optional environment)
+  (declare (ignore environment))
+  `(%make-tyvar :id ,(tyvar-id tyvar)
+                :instance ,(tyvar-instance tyvar)
+                :name ',(tyvar-name tyvar)))
+
 (defstruct (tyapp (:include ty)
                   (:constructor tyapp (constructor &rest types)))
   "A type application. (Note that this could be the application of a 0-arity constructor.)"
   (constructor  nil :type tycon     :read-only t)
   (types        nil :type type-list :read-only t))
+
+(defmethod make-load-form ((tyapp tyapp) &optional environment)
+  (declare (ignore environment))
+  `(tyapp ,(tyapp-constructor tyapp) ,@(tyapp-types tyapp)))
 
 (defun tyapp-name (tyapp)
   (tycon-name (tyapp-constructor tyapp)))
@@ -73,6 +89,10 @@
   "A function type."
   (from nil :type type-list :read-only t)
   (to   nil :type ty        :read-only t))
+
+(defmethod make-load-form ((tyfun tyfun) &optional environment)
+  (declare (ignore environment))
+  `(tyfun (list ,@(tyfun-from tyfun)) ,(tyfun-to tyfun)))
 
 (defun tyfun-arity (tyfun)
   (length (tyfun-from tyfun)))
