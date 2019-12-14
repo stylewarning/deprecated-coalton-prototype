@@ -37,7 +37,7 @@
      (coalton:true ,then)
      (coalton:false ,else)))
 
-(cl:defmacro coalton::cond ((clause-a then-a) cl:&rest clauses)
+(cl:defmacro coalton:cond ((clause-a then-a) cl:&rest clauses)
   (cl:if (cl:not (cl:null clauses))
          `(coalton:if ,clause-a
                       ,then-a
