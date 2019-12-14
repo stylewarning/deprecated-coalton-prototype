@@ -26,6 +26,7 @@
    #:let
    #:letrec
    #:if
+   #:cond
    #:lisp
    #:match)
   (:export
