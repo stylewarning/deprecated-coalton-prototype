@@ -39,11 +39,11 @@
 
 (cl:defmacro coalton:cond ((clause-a then-a) cl:&rest clauses)
   (cl:if (cl:not (cl:endp clauses))
-         `(coalton:if ,clause-a
-                      ,then-a
-                      (coalton:cond ,@clauses))
+         `(if ,clause-a
+              ,then-a
+              (cond ,@clauses))
          (cl:progn
-           (cl:assert (cl:eq 'coalton:else clause-a) () "COND must have an ELSE clause.")
+           (cl:assert (cl:eq 'else clause-a) () "COND must have an ELSE clause.")
            then-a)))
 
 (cl:declaim (cl:inline lisp-boolean-to-coalton-boolean))
