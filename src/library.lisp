@@ -34,8 +34,8 @@
 
 (cl:defmacro coalton:if (expr then else)
   `(match ,expr
-     (coalton:true ,then)
-     (coalton:false ,else)))
+     (True ,then)
+     (False ,else)))
 
 (cl:defmacro coalton:cond ((clause-a then-a) cl:&rest clauses)
   (cl:if (cl:not (cl:endp clauses))
@@ -48,7 +48,7 @@
 
 (cl:declaim (cl:inline lisp-boolean-to-coalton-boolean))
 (cl:defun lisp-boolean-to-coalton-boolean (x)
-  (cl:if x coalton:true coalton:false))
+  (cl:if x True False))
 
 
 ;;; Erroring
