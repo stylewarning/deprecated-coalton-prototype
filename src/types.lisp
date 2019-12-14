@@ -17,6 +17,8 @@
   ;; nice to make it read-only though.
   (constructors nil      :type alexandria:proper-list))
 
+(make-load-form-for-struct tycon)
+
 ;;; TODO: figure out type aliases.
 (define-global-var **type-definitions** (make-hash-table :test 'eql)
   "Database of Coalton type definitions. These are mappings from symbols to type constructors.")
@@ -38,7 +40,7 @@
   (check-type tycon-name symbol)
   (check-type new-value tycon)
   (when (tycon-knownp tycon-name)
-    (warn "Clobbering tycon ~S" tycon-name))
+    (style-warn "Clobbering tycon ~S" tycon-name))
   (setf (gethash tycon-name **type-definitions**) new-value))
 
 (defun find-tycon-for-ctor (name)
@@ -57,11 +59,15 @@
   (instance nil :type (or null ty)     :read-only nil)
   (name     nil :type (or null symbol) :read-only nil))
 
+(make-load-form-for-struct tyvar)
+
 (defstruct (tyapp (:include ty)
                   (:constructor tyapp (constructor &rest types)))
   "A type application. (Note that this could be the application of a 0-arity constructor.)"
   (constructor  nil :type tycon     :read-only t)
   (types        nil :type type-list :read-only t))
+
+(make-load-form-for-struct tyapp)
 
 (defun tyapp-name (tyapp)
   (tycon-name (tyapp-constructor tyapp)))
@@ -73,6 +79,8 @@
   "A function type."
   (from nil :type type-list :read-only t)
   (to   nil :type ty        :read-only t))
+
+(make-load-form-for-struct tyfun)
 
 (defun tyfun-arity (tyfun)
   (length (tyfun-from tyfun)))

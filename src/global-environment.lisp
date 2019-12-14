@@ -12,9 +12,12 @@
   source-form
   node)
 
+(make-load-form-for-struct entry)
+
+
 (define-global-var **global-value-definitions**
   (make-hash-table :test 'eql)
-  "Database of Coalton global value definitions.")
+  "Database of Coalton global value definitions. This is a map from vars (symbols) to ENTRYs.")
 
 (defun var-knownp (var)
   "Have we seen VAR?"
@@ -39,7 +42,7 @@
   (check-type new-value entry)
   (check-type var symbol)
   (when (var-knownp var)
-    (warn "Overwriting info entry for ~S" var))
+    (style-warn "Overwriting info entry for ~S" var))
   (setf (gethash var **global-value-definitions**) new-value))
 
 (defun make-internal-name (s)
@@ -65,7 +68,7 @@
   (check-type new-value ty)
   (let ((info (var-info var)))
     (when (entry-declared-type info)
-      (warn "Overwriting declared type of ~S" var))
+      (style-warn "Overwriting declared type of ~S" var))
     (alexandria:when-let ((derived (var-derived-type var)))
       (unless (more-or-equally-specific-type-p derived new-value)
         (error "Cannot declare ~S as ~S because that is ~
@@ -83,7 +86,7 @@
   (check-type new-value ty)
   (let ((info (var-info var)))
     (when (entry-derived-type info)
-      (warn "Overwriting derived type of ~S" var))
+      (style-warn "Overwriting derived type of ~S" var))
     (alexandria:when-let ((declared (var-declared-type var)))
       (unless (more-or-equally-specific-type-p new-value declared)
         (error "The derived type of ~S, which is ~S, is incompatible ~

@@ -28,3 +28,27 @@
          :reason-control reason-control
          :reason-args reason-args))
 
+(defun make-collector ()
+  (let* ((tail  (cons nil nil))
+         (items tail))
+    (lambda (&optional (item nil itemp))
+      (cond
+        ((not itemp) (cdr items))
+        (t
+         (rplacd tail (cons item nil))
+         (setf   tail (cdr tail))
+         item)))))
+
+(defmacro record-side-effects! ((collector) &body forms)
+  `(progn
+     ,@forms
+     (funcall ,collector '(progn ,@forms))))
+
+(defmacro make-load-form-for-struct (struct-name)
+  `(defmethod make-load-form ((s ,struct-name) &optional env)
+     (make-load-form-saving-slots s :environment env)))
+
+(defun style-warn (format-control &rest format-args)
+  (format t "~&; ")
+  (apply #'format t format-control format-args)
+  (fresh-line))
