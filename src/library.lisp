@@ -34,12 +34,21 @@
 
 (cl:defmacro coalton:if (expr then else)
   `(match ,expr
-     (coalton:true ,then)
-     (coalton:false ,else)))
+     (True ,then)
+     (False ,else)))
+
+(cl:defmacro coalton:cond ((clause-a then-a) cl:&rest clauses)
+  (cl:if (cl:not (cl:endp clauses))
+         `(if ,clause-a
+              ,then-a
+              (cond ,@clauses))
+         (cl:progn
+           (cl:assert (cl:eq 'else clause-a) () "COND must have an ELSE clause.")
+           then-a)))
 
 (cl:declaim (cl:inline lisp-boolean-to-coalton-boolean))
 (cl:defun lisp-boolean-to-coalton-boolean (x)
-  (cl:if x coalton:true coalton:false))
+  (cl:if x True False))
 
 
 ;;; Erroring
@@ -132,21 +141,15 @@
 
 (coalton-toplevel
   (define (gcd u v)
-    (if (= u v)
-        u
-        (if (zerop u)
-            v
-            (if (zerop v)
-                u
-                (if (evenp u)
-                    (if (evenp v)
-                        (double (gcd (half u) (half v)))
-                        (gcd (half u) v))
-                    (if (evenp v)
-                        (gcd u (half v))
-                        (if (> u v)
-                            (gcd (half (- u v)) v)
-                            (gcd (half (- v u)) u)))))))))
+    (cond ((= u v)   u)
+          ((zerop u) v)
+          ((zerop v) u)
+          ((evenp u) (if (evenp v)
+                         (double (gcd (half u) (half v)))
+                         (gcd (half u) v)))
+          (else      (cond ((evenp v) (gcd u (half v)))
+                           ((> u v)   (gcd (half (- u v)) v))
+                           (else      (gcd (half (- v u)) u)))))))
 
 ;;; Random examples
 (coalton-toplevel

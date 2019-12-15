@@ -26,6 +26,8 @@
    #:let
    #:letrec
    #:if
+   #:cond
+   #:else                               ; Syntax for COND
    #:lisp
    #:match)
   (:export
