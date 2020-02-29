@@ -8,6 +8,9 @@
   "A constructor for type applications."
   ;; The name of the TYCON. Technically this is only used for printing!
   (name (required 'name) :type symbol                 :read-only t)
+  ;; Was this tycon redefined in the global database, so the above
+  ;; name no longer makes sense?
+  (invalidated nil       :type boolean)
   ;; The number of (type) arguments the tycon can take.
   (arity 0               :type unsigned-byte          :read-only t)
   ;; A list of CONSTRUCTOR-NAMEs.
@@ -24,10 +27,26 @@
   "Database of Coalton type definitions. These are mappings from symbols to type constructors.")
 
 (defmacro define-type-constructor (name arity)
-  `(setf (gethash ',name **type-definitions**)
-         (make-tycon :name ',name :arity ',arity)))
+  "Globally define a type constructor named NAME (a symbol) with arity ARITY (a non-negative integer).
+
+If NAME is already known (and the known arity matches), nothing will happen. If it doesn't match, an error will be signaled.
+
+If NAME is not known, it will be made known to the global type database."
+  (check-type name symbol)
+  (check-type arity (integer 0))
+  (alexandria:with-gensyms (entry exists?)
+    `(multiple-value-bind (,entry ,exists?) (gethash ',name **type-definitions**)
+       (cond
+         (,exists?
+          (when (/= ,arity (tycon-arity ,entry))
+            (error "Trying to redefine tycon ~S with a different arity." ',name)))
+         (t
+          (setf (gethash ',name **type-definitions**)
+                (make-tycon :name ',name :arity ',arity))
+          ',name)))) )
 
 (defun tycon-knownp (tycon-name)
+  "Do we know of a tycon named TYCON-NAME?"
   (check-type tycon-name symbol)
   (nth-value 1 (gethash tycon-name **type-definitions**)))
 
@@ -40,7 +59,8 @@
   (check-type tycon-name symbol)
   (check-type new-value tycon)
   (when (tycon-knownp tycon-name)
-    (style-warn "Clobbering tycon ~S" tycon-name))
+    (style-warn "Clobbering tycon ~S" tycon-name)
+    (setf (tycon-invalidated (find-tycon tycon-name)) t))
   (setf (gethash tycon-name **type-definitions**) new-value))
 
 (defun find-tycon-for-ctor (name)
@@ -66,7 +86,11 @@
   (types        nil :type type-list :read-only t))
 
 (defun tyapp-name (tyapp)
-  (tycon-name (tyapp-constructor tyapp)))
+  (let ((tycon (tyapp-constructor tyapp)))
+    (if (tycon-invalidated tycon)
+        ;; A little hack so that we see when tycons got invalidated.
+        '#:@@INVALIDATED@@
+        (tycon-name tycon))))
 
 ;; We have a special constructor for functions because we handle
 ;; multi-argument functions without a separate tuple type.
