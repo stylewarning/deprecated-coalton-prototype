@@ -157,6 +157,7 @@ If NAME is not known, it will be made known to the global type database."
       (setf (tyvar-name v) (gensym "T"))))
 
 (defun unparse-type (ty)
+  "Convert a type TY back into an S-expression representation (which could be parsed back again with PARSE-TYPE)."
   (etypecase ty
     (tyvar
      (if (tyvar-instance ty)
@@ -166,7 +167,7 @@ If NAME is not known, it will be made known to the global type database."
     (tyapp
      (if (null (tyapp-types ty))
          (tyapp-name ty)
-         (list* (tyapp-name ty) (mapcar #'unparse-type (tyapp-types ty)))))
+         (cons (tyapp-name ty) (mapcar #'unparse-type (tyapp-types ty)))))
     
     (tyfun
      (let ((from (mapcar #'unparse-type (tyfun-from ty)))
