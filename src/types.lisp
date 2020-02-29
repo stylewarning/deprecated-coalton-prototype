@@ -6,7 +6,9 @@
 ;;; constructor for a *type*! Get with the program!
 (defstruct tycon
   "A constructor for type applications."
+  ;; The name of the TYCON. Technically this is only used for printing!
   (name (required 'name) :type symbol                 :read-only t)
+  ;; The number of (type) arguments the tycon can take.
   (arity 0               :type unsigned-byte          :read-only t)
   ;; A list of CONSTRUCTOR-NAMEs.
   ;;
@@ -38,7 +40,7 @@
   (check-type tycon-name symbol)
   (check-type new-value tycon)
   (when (tycon-knownp tycon-name)
-    (warn "Clobbering tycon ~S" tycon-name))
+    (style-warn "Clobbering tycon ~S" tycon-name))
   (setf (gethash tycon-name **type-definitions**) new-value))
 
 (defun find-tycon-for-ctor (name)

@@ -28,3 +28,5 @@
          :reason-control reason-control
          :reason-args reason-args))
 
+(defun style-warn (format-control &rest format-args)
+  (apply #'alexandria:simple-style-warning format-control format-args))

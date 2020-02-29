@@ -6,8 +6,8 @@
 ;;; are useful for development, but are not needed or a part of the
 ;;; functionality of the system.
 
-(defun print-value-database (&key (symbol-table **global-value-definitions**)
-                                  (stream *standard-output*))
+(defun print-value-db (&key (symbol-table **global-value-definitions**)
+                            (stream *standard-output*))
   ;; Print package prefixes.
   (let ((*package* (find-package "KEYWORD"))
         (*print-pretty* nil))
@@ -21,8 +21,8 @@
              symbol-table))
   (values))
 
-(defun print-type-database (&key (symbol-table **type-definitions**)
-                                  (stream *standard-output*))
+(defun print-type-db (&key (symbol-table **type-definitions**)
+                           (stream *standard-output*))
   ;; Print package prefixes.
   (let ((*package* (find-package "KEYWORD"))
         (*print-pretty* nil))
