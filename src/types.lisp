@@ -58,9 +58,15 @@ If NAME is not known, it will be made known to the global type database."
 (defun (setf find-tycon) (new-value tycon-name)
   (check-type tycon-name symbol)
   (check-type new-value tycon)
+
+  ;; Warn about clobbering a non-identical tycon, and invalidate the
+  ;; old one.
   (when (tycon-knownp tycon-name)
-    (style-warn "Clobbering tycon ~S" tycon-name)
-    (setf (tycon-invalidated (find-tycon tycon-name)) t))
+    (let ((existing-tycon (find-tycon tycon-name)))
+      (unless (eq existing-tycon new-value)
+        (style-warn "Clobbering tycon ~S" tycon-name)
+        (setf (tycon-invalidated existing-tycon) t))))
+
   (setf (gethash tycon-name **type-definitions**) new-value))
 
 (defun find-tycon-for-ctor (name)
@@ -168,7 +174,7 @@ If NAME is not known, it will be made known to the global type database."
      (if (null (tyapp-types ty))
          (tyapp-name ty)
          (cons (tyapp-name ty) (mapcar #'unparse-type (tyapp-types ty)))))
-    
+
     (tyfun
      (let ((from (mapcar #'unparse-type (tyfun-from ty)))
            (to (unparse-type (tyfun-to ty))))

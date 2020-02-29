@@ -23,11 +23,21 @@ where
     (destructuring-bind (tycon-name &rest tyvar-names) type
       (assert (symbolp tycon-name))
       (assert (every #'symbolp tyvar-names))
-      (when (tycon-knownp tycon-name)
-        (cerror "Clobber the tycon." "Already defined tycon: ~S" tycon-name))
-      (list* (make-tycon :name tycon-name :arity (length tyvar-names))
-             type
-             ctors))))
+      (let* ((arity (length tyvar-names))
+             (fresh-tycon (make-tycon :name tycon-name :arity arity))
+             (tycon (if (tycon-knownp tycon-name)
+                        (find-tycon tycon-name)
+                        fresh-tycon)))
+        ;; The point of this check is to see if the tycon we already
+        ;; know is "compatible" with the one we are parsing. If it is,
+        ;; we'll use the one we know. However, if the one we know is
+        ;; inconsistent with the one we are parsing, we should error.
+        ;;
+        ;; TODO: Should we also verify the constructors here?
+        (when (/= arity (tycon-arity tycon))
+          (cerror "Clobber the tycon." "Tycon ~S already defined, but with different arity." tycon-name)
+          (setf tycon fresh-tycon))
+        (list* tycon type ctors)))))
 
 
 (defun parse-out-ctors (this-tycon raw-type raw-ctors extra-tycons)
@@ -85,9 +95,12 @@ where
   (let* ((tycon-name (tycon-name tycon))
          (ctor-names (mapcar #'second ctors)))
     ;; Record the ctors.
+    ;;
+    ;; XXX: This may clobber existing known ctor functions!
     (setf (tycon-constructors tycon) ctor-names)
 
-    ;; Make the tycon known. We clobber it if it exists.
+    ;; Make the tycon known. We clobber it if it exists and is
+    ;; inequivalent.
     (setf (find-tycon tycon-name) tycon)
 
     ;; Declare the types of the new things.
