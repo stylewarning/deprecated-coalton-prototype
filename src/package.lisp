@@ -13,6 +13,7 @@
    #:define-type)
   (:export
    #:->
+   #:*
    #:void
    #:integer
    #:string
@@ -58,6 +59,8 @@
    #:type-mismatch-types                ; READER
    #:arity-mismatch                     ; CONDITION
    #:arity-mismatch-arities             ; READER
+   #:tuple-size-mismatch                ; CONDITION
+   #:tuple-size-mismatch-sizes          ; READER
    #:non-terminating-unification-error  ; CONDITION
    #:non-terminating-unification-error-contained-type
                                         ; READER

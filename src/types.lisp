@@ -99,12 +99,21 @@ If NAME is not known, it will be made known to the global type database."
         (tycon-name tycon))))
 
 ;; We have a special constructor for functions because we handle
-;; multi-argument functions without a separate tuple type.
+;; multi-argument functions without a separate tuple type. The reason
+;; we don't ordinarily want to use a tuple is to naturally support
+;; arguments being passed on the call stack.
 (defstruct (tyfun (:include ty)
                   (:constructor tyfun (from to)))
   "A function type."
   (from nil :type type-list :read-only t)
   (to   nil :type ty        :read-only t))
+
+;; We have a special constructor for tuples so we can have arbitrary
+;; arity.
+(defstruct (tytup (:include ty)
+                  (:constructor tytup (&rest fields)))
+  "A fixed size tuple type."
+  (fields nil :type type-list :read-only t))
 
 (defun tyfun-arity (tyfun)
   (length (tyfun-from tyfun)))
@@ -141,7 +150,8 @@ If NAME is not known, it will be made known to the global type database."
                    (every #'more-or-equally-specific-type-p
                           (tyapp-types general)
                           (tyapp-types specific))))
-       (tyfun nil)))
+       (tyfun nil)
+       (tytup nil)))
     (tyfun
      (etypecase specific
        (tyvar (and (not (null (tyvar-instance specific)))
@@ -151,7 +161,15 @@ If NAME is not known, it will be made known to the global type database."
                     (tyfun-to general) (tyfun-to specific))
                    (every #'more-or-equally-specific-type-p
                           (tyfun-from general)
-                          (tyfun-from specific))))))))
+                          (tyfun-from specific))))
+       (tytup nil)))
+    (tytup
+     (etypecase specific
+       (tyvar (and (not (null (tyvar-instance specific)))
+                   (more-or-equally-specific-type-p general (tyvar-instance specific))))
+       (tyapp nil)
+       (tyfun nil)
+       (tytup (every #'more-or-equally-specific-type-p (tytup-fields general) (tytup-fields specific)))))))
 
 (defvar *next-variable-id* 0)
 (defun make-variable ()
@@ -163,7 +181,7 @@ If NAME is not known, it will be made known to the global type database."
       (setf (tyvar-name v) (gensym "T"))))
 
 (defun unparse-type (ty)
-  "Convert a type TY back into an S-expression representation (which could be parsed back again with PARSE-TYPE)."
+  "Convert a type TY back into an S-expression representation (which could be parsed back again with PARSE-TYPE-EXPRESSION)."
   (etypecase ty
     (tyvar
      (if (tyvar-instance ty)
@@ -178,7 +196,9 @@ If NAME is not known, it will be made known to the global type database."
     (tyfun
      (let ((from (mapcar #'unparse-type (tyfun-from ty)))
            (to (unparse-type (tyfun-to ty))))
-       `(coalton:-> ,from ,to)))))
+       `(coalton:-> ,from ,to)))
+    (tytup
+     `(coalton:* ,@(mapcar #'unparse-type (tytup-fields ty))))))
 
 (defun prune (ty)
   (etypecase ty
@@ -192,6 +212,9 @@ If NAME is not known, it will be made known to the global type database."
      ty)
 
     (tyfun
+     ty)
+
+    (tytup
      ty)))
 
 (defun occurs-in-type (v t2)
@@ -202,6 +225,7 @@ If NAME is not known, it will be made known to the global type database."
         (typecase pruned-t2
           (tyapp (occurs-in v (tyapp-types pruned-t2)))
           (tyfun (occurs-in v (cons (tyfun-to pruned-t2) (tyfun-from pruned-t2))))
+          (tytup (occurs-in v (tytup-fields pruned-t2)))
           (otherwise nil)))))
 
 (defun occurs-in (ty types)
@@ -231,7 +255,9 @@ If NAME is not known, it will be made known to the global type database."
                            (mapcar #'freshrec (tyapp-types ptp))))
                    (tyfun
                     (tyfun (mapcar #'freshrec (tyfun-from ptp))
-                           (freshrec (tyfun-to ptp))))))))
+                           (freshrec (tyfun-to ptp))))
+                   (tytup
+                    (apply #'tytup (mapcar #'freshrec (tytup-fields ptp))))))))
       (values (freshrec ty) (alexandria:hash-table-alist table)))))
 
 (defun assoc-find (env name)
@@ -284,6 +310,23 @@ If NAME is not known, it will be made known to the global type database."
                        (first (arity-mismatch-arities c))
                        (second (arity-mismatch-arities c)))))))
 
+(define-condition tuple-size-mismatch (type-mismatch)
+  ((mismatched-sizes :initarg :mismatched-sizes
+                     :reader tuple-size-mismatch-sizes))
+  (:documentation "An error that is signalled when unification fails due to tuple sizes differing.")
+  (:report (lambda (c s)
+             (let ((*print-circle* nil)
+                   (*print-pretty* nil))
+               (format s "The types ~S and ~S are incompatible because they ~
+                          contain the tuples ~S and ~S which are of different ~
+                          sizes (~D and ~D respectively)."
+                       (unparse-type (unification-error-first-type c))
+                       (unparse-type (unification-error-second-type c))
+                       (unparse-type (first (type-mismatch-types c)))
+                       (unparse-type (second (type-mismatch-types c)))
+                       (first (tuple-size-mismatch-sizes c))
+                       (second (tuple-size-mismatch-sizes c)))))))
+
 (define-condition non-terminating-unification-error (unification-error)
   ((contained-type :initarg :contained-type
                    :reader non-terminating-unification-error-contained-type)
@@ -322,6 +365,17 @@ If NAME is not known, it will be made known to the global type database."
                     (setf (tyvar-instance pty1) pty2)))
                  ((tyvar-p pty2)
                   (%unify pty2 pty1))
+                 ((and (tyapp-p pty1)
+                       (tyapp-p pty2))
+                  (let ((name1 (tyapp-name pty1)) (types1 (tyapp-types pty1))
+                        (name2 (tyapp-name pty2)) (types2 (tyapp-types pty2)))
+                    (when (or (not (eq name1 name2))
+                              (not (= (length types1) (length types2))))
+                      (error 'type-mismatch
+                             :first-type type1
+                             :second-type type2
+                             :mismatched-types (list pty1 pty2)))
+                    (mapc #'%unify types1 types2)))
                  ((and (tyfun-p pty1)
                        (tyfun-p pty2))
                   (let ((arity-1 (length (tyfun-from pty1)))
@@ -334,17 +388,17 @@ If NAME is not known, it will be made known to the global type database."
                              :mismatched-arities (list arity-1 arity-2)))
                     (mapc #'%unify (tyfun-from pty1) (tyfun-from pty2))
                     (%unify (tyfun-to pty1) (tyfun-to pty2))))
-                 ((and (tyapp-p pty1)
-                       (tyapp-p pty2))
-                  (let ((name1 (tyapp-name pty1)) (types1 (tyapp-types pty1))
-                        (name2 (tyapp-name pty2)) (types2 (tyapp-types pty2)))
-                    (when (or (not (eq name1 name2))
-                              (not (= (length types1) (length types2))))
-                      (error 'type-mismatch
+                 ((and (tytup-p pty1)
+                       (tytup-p pty2))
+                  (let ((size-1 (length (tytup-fields pty1)))
+                        (size-2 (length (tytup-fields pty2))))
+                    (unless (= size-1 size-2)
+                      (error 'tuple-size-mismatch
                              :first-type type1
                              :second-type type2
-                             :mismatched-types (list pty1 pty2)))
-                    (mapc #'%unify types1 types2)))
+                             :mismatched-types (list pty1 pty2)
+                             :mismatched-sizes (list size-1 size-2)))
+                    (mapc #'%unify (tytup-fields pty1) (tytup-fields pty2))))
                  (t
                   (error 'type-mismatch
                          :first-type type1
