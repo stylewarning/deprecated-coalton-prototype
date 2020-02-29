@@ -20,3 +20,17 @@
                                          (entry-derived-type entry)))))
              symbol-table))
   (values))
+
+(defun print-type-database (&key (symbol-table **type-definitions**)
+                                  (stream *standard-output*))
+  ;; Print package prefixes.
+  (let ((*package* (find-package "KEYWORD"))
+        (*print-pretty* nil))
+    (maphash (lambda (sym entry)
+               (format stream "~S (~D arg~:P, ~D ctor~:P): ~{~A~^, ~}~%"
+                       sym
+                       (tycon-arity entry)
+                       (length (tycon-constructors entry))
+                       (tycon-constructors entry)))
+             symbol-table))
+  (values))
