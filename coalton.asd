@@ -30,6 +30,7 @@
                (:file "toplevel-define")
                (:file "coalton")
                (:file "faux-macros")
+               (:file "impl-debug-routines")
                (:file "library")))
 
 (asdf:defsystem #:coalton/tests
