@@ -56,7 +56,7 @@
                                                :for val := (cdr (assoc var bindings))
                                                :collect `(,var ,(analyze val))))
                           (psetq-pairs (loop :for var :in cyclic
-                                        :for val := (cdr (assoc var bindings))
+                                             :for val := (cdr (assoc var bindings))
                                              :append (list var (analyze val))))
                           ;; Generate the subexpression.
                           (lisp-expr (analyze (node-letrec-subexpr expr))))
@@ -102,26 +102,25 @@
                   `(funcall ,rator ,@rands)))
 
                (node-match
-                (let ((value (gensym "VALUE"))
-                      (slots (gensym "SLOTS")))
+                (alexandria:with-gensyms (value slots)
                   `(let ((,value ,(analyze (node-match-value expr))))
                      (cond
                        ,@(loop :for clause :in (node-match-clauses expr)
                                :for pattern := (match-clause-pattern clause)
                                :for result := (match-clause-value clause)
                                :for ctor := (ctor-pattern-ctor pattern)
+                               :for ctor-class-name := (assemble-ctor-class-name (tycon-name (node-match-tycon expr)) ctor)
                                :for vars := (ctor-pattern-variables pattern)
                                :if (null vars)
-                                 :collect `((typep ,value ',ctor)
+                                 :collect `((typep ,value ',ctor-class-name)
                                             ,(analyze result))
                                :else
-                                 :collect (let ()
-                                            `((typep ,value ',ctor)
-                                              (let* ((,slots (cl:slot-value ,value 'coalton-impl::value))
-                                                     ,@(loop :for i :from 0
-                                                             :for var :in vars
-                                                             :collect `(,var (svref ,slots ,i))))
-                                                (declare (ignorable ,@vars))
-                                                ,(analyze result)))))
+                                 :collect `((typep ,value ',ctor-class-name)
+                                            (let* ((,slots (cl:slot-value ,value 'coalton-impl::value))
+                                                   ,@(loop :for i :from 0
+                                                           :for var :in vars
+                                                           :collect `(,var (svref ,slots ,i))))
+                                              (declare (ignorable ,@vars))
+                                              ,(analyze result))))
                        (t (error "match error")))))))))
     (analyze value)))

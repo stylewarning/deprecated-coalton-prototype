@@ -7,6 +7,9 @@
 (defstruct tycon
   "A constructor for type applications."
   ;; The name of the TYCON. Technically this is only used for printing!
+  ;;
+  ;; We also incidentally rely on this in COMPILE-VALUE so that we can
+  ;; construct a constructor's class name.
   (name (required 'name) :type symbol                 :read-only t)
   ;; Was this tycon redefined in the global database, so the above
   ;; name no longer makes sense?

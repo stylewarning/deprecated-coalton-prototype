@@ -34,16 +34,16 @@
 
 (define-type-constructor coalton:unit 0)
 (define-global-var* unit-type (tyapp (find-tycon 'coalton:unit)))
-(forward-declare-variable 'coalton:Singleton unit-type)
+(forward-declare-variable 'coalton:Unit unit-type)
 
-;; (macroexpand-1 `(coalton:coalton
+;; (macroexpand-1 `(coalton:coalton-toplevel
 ;;                   (coalton:define-type Unit
-;;                     Singleton)))
+;;                     Unit)))
 
-(DEFCLASS COALTON:UNIT NIL NIL
+(DEFCLASS COALTON:UNIT () ()
   (:METACLASS ABSTRACT-CLASS))
-(DEFCLASS COALTON:SINGLETON (COALTON:UNIT) NIL
+(DEFCLASS COALTON::UNIT/UNIT (COALTON:UNIT) ()
   (:METACLASS SINGLETON-CLASS))
-(DEFMETHOD PRINT-OBJECT ((SELF COALTON:SINGLETON) STREAM)
-  (FORMAT STREAM "#.~s" 'COALTON:SINGLETON))
-(GLOBAL-VARS:DEFINE-GLOBAL-VAR* COALTON:SINGLETON (MAKE-INSTANCE 'COALTON:SINGLETON))
+(DEFMETHOD PRINT-OBJECT ((SELF COALTON::UNIT/UNIT) STREAM)
+  (FORMAT STREAM "#.~s" 'COALTON:UNIT))
+(GLOBAL-VARS:DEFINE-GLOBAL-VAR* COALTON:UNIT (MAKE-INSTANCE 'COALTON::UNIT/UNIT))
