@@ -6,7 +6,7 @@
   ;; Defined in early-types.lisp
   #+ignore
   (define-type Unit
-    Singleton)
+    Unit)
 
   (define-type coalton:Boolean
     coalton:True
@@ -59,7 +59,7 @@
 
 ;;; Combinators
 (coalton-toplevel
-  (define (ignore x)     Singleton)
+  (define (ignore x)     Unit)
   (define (identity x)   x)
   (define (constantly x) (fn (y) x))
   (define (flip f)       (fn (x y) (f y x)))
@@ -129,15 +129,15 @@
 
 ;;; Mutable Cells
 (coalton-toplevel
-  (define-type (Mutable-Cell t)
+  (define-type (Ref t)
     (Ref t))
 
-  (declare mutate-cell (-> ((Mutable-Cell t) t) Unit))
+  (declare mutate-cell (-> ((Ref t) t) Unit))
   (define (mutate-cell r v)
     (lisp Unit
       (cl:progn
         (cl:setf (cl:svref (cl:slot-value r 'coalton-impl::value) 0) v)
-        Singleton))))
+        Unit))))
 
 (coalton-toplevel
   (define (gcd u v)

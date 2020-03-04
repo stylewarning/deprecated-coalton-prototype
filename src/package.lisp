@@ -17,7 +17,7 @@
    #:integer
    #:string
    #:boolean #:true #:false
-   #:unit #:singleton)
+   #:unit)
   (:export
    #:declare
    #:fn
