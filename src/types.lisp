@@ -127,8 +127,7 @@ If NAME is not known, it will be made known to the global type database."
 (defun type= (type1 type2)
   "Check equality of types TYPE1 and TYPE2
 
-Types are equivalent when the structure (TYAPP and TYFUN)
-matches and there exists a bijection between TYVARs of each type."
+Types are equivalent when the structure (TYAPP and TYFUN) matches and there exists a bijection between TYVARs of each type."
   (declare (type ty type1 type2)
            (values boolean))
   (let ((var-table nil))
