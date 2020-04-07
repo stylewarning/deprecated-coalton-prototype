@@ -124,6 +124,61 @@ If NAME is not known, it will be made known to the global type database."
 
 #+sbcl (declaim (sb-ext:freeze-type ty tyvar tyapp tyfun))
 
+(defun type= (type1 type2)
+  "Check equality of types TYPE1 and TYPE2
+
+Types are equivalent when the structure (TYAPP and TYFUN)
+matches and there exists a bijection between TYVARs of each type."
+  (declare (type ty type1 type2)
+           (values boolean))
+  (let ((var-table nil))
+    (labels ((%type= (ty1 ty2)
+               (let ((pty1 (prune ty1))
+                     (pty2 (prune ty2)))
+                 (cond
+                   ((and (tyvar-p pty1)
+                         (tyvar-p pty2))
+                    (let ((pair1
+                            (find-if
+                             (lambda (x)
+                               (= (tyvar-id pty1)
+                                  (car x)))
+                             var-table))
+                          (pair2
+                            (find-if
+                             (lambda (x)
+                               (= (tyvar-id pty2)
+                                  (cadr x)))
+                             var-table)))
+                      (cond
+                        ((equal pair1 pair2)
+                         (when (null pair1)
+                           (push (list (tyvar-id pty1) (tyvar-id pty2))
+                                 var-table))
+                         t)
+                        (t
+                         nil))))
+                   ((and (tyfun-p pty1)
+                         (tyfun-p pty2))
+                    (let ((arity-1 (length (tyfun-from pty1)))
+                          (arity-2 (length (tyfun-from pty2))))
+                      (if (= arity-1 arity-2)
+                          (and
+                           (%type= (tyfun-to pty1) (tyfun-to pty2))
+                           (every #'%type= (tyfun-from pty1) (tyfun-from pty2)))
+                          nil)))
+                   ((and (tyapp-p pty1)
+                         (tyapp-p pty2))
+                    (let ((name1 (tyapp-name pty1)) (types1 (tyapp-types pty1))
+                          (name2 (tyapp-name pty2)) (types2 (tyapp-types pty2)))
+                      (if (and (eq name1 name2)
+                               (= (length types1) (length types2)))
+                          (every #'%type= types1 types2)
+                          nil)))
+                   (t
+                    nil)))))
+      (%type= type1 type2))))
+
 (defun more-or-equally-specific-type-p (general specific)
   "Is the type SPECIFIC an equal or more specific instantiation of GENERAL?"
   (check-type general ty)
