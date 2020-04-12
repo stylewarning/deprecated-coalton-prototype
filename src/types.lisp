@@ -137,18 +137,8 @@ Types are equivalent when the structure (TYAPP and TYFUN) matches and there exis
                  (cond
                    ((and (tyvar-p pty1)
                          (tyvar-p pty2))
-                    (let ((pair1
-                            (find-if
-                             (lambda (x)
-                               (= (tyvar-id pty1)
-                                  (car x)))
-                             var-table))
-                          (pair2
-                            (find-if
-                             (lambda (x)
-                               (= (tyvar-id pty2)
-                                  (cadr x)))
-                             var-table)))
+                    (let ((pair1 (find (tyvar-id pty1) var-table :key #'car :test #'=))
+                          (pair2 (find (tyvar-id pty2) var-table :key #'car :test #'=)))
                       (cond
                         ((equal pair1 pair2)
                          (when (null pair1)
@@ -159,21 +149,17 @@ Types are equivalent when the structure (TYAPP and TYFUN) matches and there exis
                          nil))))
                    ((and (tyfun-p pty1)
                          (tyfun-p pty2))
-                    (let ((arity-1 (length (tyfun-from pty1)))
-                          (arity-2 (length (tyfun-from pty2))))
-                      (if (= arity-1 arity-2)
-                          (and
-                           (%type= (tyfun-to pty1) (tyfun-to pty2))
-                           (every #'%type= (tyfun-from pty1) (tyfun-from pty2)))
-                          nil)))
+                    (and
+                     (= (tyfun-arity pty1) (tyfun-arity pty2))
+                     (%type= (tyfun-to pty1) (tyfun-to pty2))
+                     (every #'%type= (tyfun-from pty1) (tyfun-from pty2))))
                    ((and (tyapp-p pty1)
                          (tyapp-p pty2))
                     (let ((name1 (tyapp-name pty1)) (types1 (tyapp-types pty1))
                           (name2 (tyapp-name pty2)) (types2 (tyapp-types pty2)))
-                      (if (and (eq name1 name2)
-                               (= (length types1) (length types2)))
-                          (every #'%type= types1 types2)
-                          nil)))
+                      (and (eq name1 name2)
+                           (= (length types1) (length types2))
+                           (every #'%type= types1 types2))))
                    (t
                     nil)))))
       (%type= type1 type2))))
