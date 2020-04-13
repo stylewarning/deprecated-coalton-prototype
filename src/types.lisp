@@ -124,6 +124,46 @@ If NAME is not known, it will be made known to the global type database."
 
 #+sbcl (declaim (sb-ext:freeze-type ty tyvar tyapp tyfun))
 
+(defun type= (type1 type2)
+  "Check equality of types TYPE1 and TYPE2
+
+Types are equivalent when the structure (TYAPP and TYFUN) matches and there exists a bijection between TYVARs of each type."
+  (declare (type ty type1 type2)
+           (values boolean))
+  (let ((var-table nil))
+    (labels ((%type= (ty1 ty2)
+               (let ((pty1 (prune ty1))
+                     (pty2 (prune ty2)))
+                 (cond
+                   ((and (tyvar-p pty1)
+                         (tyvar-p pty2))
+                    (let ((pair1 (find (tyvar-id pty1) var-table :key #'car :test #'=))
+                          (pair2 (find (tyvar-id pty2) var-table :key #'car :test #'=)))
+                      (cond
+                        ((equal pair1 pair2)
+                         (when (null pair1)
+                           (push (list (tyvar-id pty1) (tyvar-id pty2))
+                                 var-table))
+                         t)
+                        (t
+                         nil))))
+                   ((and (tyfun-p pty1)
+                         (tyfun-p pty2))
+                    (and
+                     (= (tyfun-arity pty1) (tyfun-arity pty2))
+                     (%type= (tyfun-to pty1) (tyfun-to pty2))
+                     (every #'%type= (tyfun-from pty1) (tyfun-from pty2))))
+                   ((and (tyapp-p pty1)
+                         (tyapp-p pty2))
+                    (let ((name1 (tyapp-name pty1)) (types1 (tyapp-types pty1))
+                          (name2 (tyapp-name pty2)) (types2 (tyapp-types pty2)))
+                      (and (eq name1 name2)
+                           (= (length types1) (length types2))
+                           (every #'%type= types1 types2))))
+                   (t
+                    nil)))))
+      (%type= type1 type2))))
+
 (defun more-or-equally-specific-type-p (general specific)
   "Is the type SPECIFIC an equal or more specific instantiation of GENERAL?"
   (check-type general ty)
