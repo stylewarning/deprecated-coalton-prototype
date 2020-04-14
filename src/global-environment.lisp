@@ -95,7 +95,6 @@
                     (unparse-type existing-derived-type)
                     (unparse-type new-value))))
     (alexandria:when-let ((declared (var-declared-type var)))
-      (type= new-value declared) ;; TODO: use type= or remove
       (unless (more-or-equally-specific-type-p new-value declared)
         (error "The derived type of ~S, which is ~S, is incompatible ~
                 with its previously declared type ~S."
