@@ -64,8 +64,13 @@
 (defun (setf var-declared-type) (new-value var)
   (check-type new-value ty)
   (let ((info (var-info var)))
-    (when (entry-declared-type info)
-      (style-warn "Overwriting declared type of ~S" var))
+    (alexandria:when-let ((existing-declared-type (entry-declared-type info)))
+      (when (type= existing-declared-type new-value)
+        (return-from var-declared-type var))
+      (style-warn "Overwriting declared type of ~S from ~A to ~A"
+                  var
+                  (unparse-type existing-declared-type)
+                  (unparse-type new-value)))
     (alexandria:when-let ((derived (var-derived-type var)))
       (unless (more-or-equally-specific-type-p derived new-value)
         (error "Cannot declare ~S as ~S because that is ~
@@ -82,8 +87,13 @@
 (defun (setf var-derived-type) (new-value var)
   (check-type new-value ty)
   (let ((info (var-info var)))
-    (when (entry-derived-type info)
-      (style-warn "Overwriting derived type of ~S" var))
+    (alexandria:when-let ((existing-derived-type (entry-derived-type info)))
+      (when (type= existing-derived-type new-value)
+        (return-from var-derived-type var))
+      (style-warn "Overwriting derived type of ~S from ~A to ~A"
+                  var
+                  (unparse-type existing-derived-type)
+                  (unparse-type new-value)))
     (alexandria:when-let ((declared (var-declared-type var)))
       (unless (more-or-equally-specific-type-p new-value declared)
         (error "The derived type of ~S, which is ~S, is incompatible ~
