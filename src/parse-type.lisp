@@ -7,6 +7,8 @@
 ;;;    <type expr> := <type alias>                       ; TODO!
 ;;;                 | <type variable>
 ;;;                 | <nullary type constructor>
+;;;                 | (-> (<type expr>*) <type-expr>)
+;;;                 | (* <type-expr>*)
 ;;;                 | (<type constructor> <type expr>*)
 
 (defun parse-type-expression (whole-expr &key variable-assignments
@@ -41,12 +43,18 @@ EXTRA-TYCONS is a list of tycons that are perhaps not globally defined yet. Thes
                (tyapp (find-it expr)))
 
              (parse-application (expr)
-               (if (eq 'coalton:-> (first expr))
-                   (destructuring-bind (arrow from to) expr
+               (case (first expr)
+                 (coalton:->
+                  (destructuring-bind (arrow from to) expr
                      (declare (ignore arrow))
                      (tyfun (mapcar #'parse (alexandria:ensure-list from))
-                            (parse to)))
-                   (destructuring-bind (tycon &rest args) expr
+                            (parse to))))
+                 (coalton:*
+                  (destructuring-bind (star &rest fields) expr
+                     (declare (ignore star))
+                     (apply #'tytup (mapcar #'parse fields))))
+                 (otherwise
+                  (destructuring-bind (tycon &rest args) expr
                      (unless (symbolp tycon)
                        (error-parsing whole-expr "Invalid part of type expression: ~S" tycon))
                      (unless (knownp tycon)
@@ -54,7 +62,7 @@ EXTRA-TYCONS is a list of tycons that are perhaps not globally defined yet. Thes
                      ;; TODO: Make sure arity is correct!
                      (apply #'tyapp
                             (find-it tycon)
-                            (mapcar #'parse args)))))
+                            (mapcar #'parse args))))))
 
              (parse (expr)
                (typecase expr
