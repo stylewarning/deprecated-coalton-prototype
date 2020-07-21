@@ -61,9 +61,8 @@
   (cond
     ((var-definedp name)
      ;; XXX: Get this right. Re-typecheck everything?!
-     (let ((internal-name (entry-internal-name (var-info name))))
-       (list
-        `(setf ,internal-name ,(compile-value-to-lisp expr)))))
+     (list
+      `(setf ,name ,(compile-value-to-lisp expr))))
     (t
      (unless (var-knownp name)
        ;; Declare the variable.
@@ -71,7 +70,7 @@
      ;; The type inferencing has already been done by this point. (See
      ;; `PROCESS-TOPLEVEL-VALUE-DEFINITIONS'.)
      (let (;;(inferred-type (node-derived-type expr))
-           (internal-name (entry-internal-name (var-info name))))
+           )
        ;; FIXME check VAR-DECLARED-TYPE
        ;; FIXME check VAR-DERIVED-TYPE
        (setf ;;(var-derived-type name)             inferred-type
@@ -79,13 +78,12 @@
        (when whole-provided-p
          (setf (entry-source-form (var-info name)) whole))
        (list*
-        `(define-symbol-macro ,name ,internal-name)
-        `(global-vars:define-global-var ,internal-name
+        `(define-global-lexical ,name
              ,(if (not self)
                   (compile-value-to-lisp expr)
                   `(let (,name)
-                    (setf ,name ,(compile-value-to-lisp expr))
-                    ,name)))
+                     (setf ,name ,(compile-value-to-lisp expr))
+                     ,name)))
         (when (eq ':function kind)
           (list
            `(defun ,name (,@args)

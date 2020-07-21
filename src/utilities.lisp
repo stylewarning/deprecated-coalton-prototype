@@ -30,3 +30,19 @@
 
 (defun style-warn (format-control &rest format-args)
   (apply #'alexandria:simple-style-warning format-control format-args))
+
+(defmacro define-symbol-property (property-accessor &key
+                                                      (type nil type-provided)
+                                                      (documentation nil doc-provided))
+  ;; TODO document
+  ;;
+  ;; TODO use docs and type
+  (declare (ignore type type-provided documentation doc-provided))
+  (let ((symbol (gensym "SYMBOL"))
+        (new-value (gensym "NEW-VALUE")))
+    `(progn
+       (declaim (inline ,property-accessor (setf ,property-accessor)))
+       (defun ,property-accessor (,symbol)
+         (get ,symbol ',property-accessor))
+       (defun (setf ,property-accessor) (,new-value ,symbol)
+         (setf (get ,symbol ',property-accessor) ,new-value)))))

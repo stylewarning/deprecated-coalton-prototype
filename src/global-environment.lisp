@@ -6,7 +6,6 @@
 
 (defstruct entry
   "An entry in the global value database."
-  (internal-name nil :type symbol)
   (declared-type nil :type (or null ty))
   (derived-type nil :type (or null ty))
   source-form
@@ -42,17 +41,13 @@
     (style-warn "Overwriting info entry for ~S" var))
   (setf (gethash var **global-value-definitions**) new-value))
 
-(defun make-internal-name (s)
-  (check-type s symbol)
-  (gentemp (symbol-name s) ':coalton-global-symbols))
-
 (defun forward-declare-variable (var &optional (declared-type nil declaredp))
   (check-type var symbol)
   (check-type declared-type (or ty null))
   (when (var-knownp var)
     (error "Can't forward declare ~S, which is already known." var))
   (setf (gethash var **global-value-definitions**)
-        (make-entry :internal-name (make-internal-name var)))
+        (make-entry))
   (when declaredp
     (setf (var-declared-type var) declared-type))
   var)
