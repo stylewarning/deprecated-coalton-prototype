@@ -5,7 +5,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun make-function-type (from to)
-  "Make a function type mapping FROM to TO. Equivalent to (-> FROM TO)."
+  "Make a function type mapping FROM to TO. Equivalent to (FN FROM -> TO)."
   (tyfun (alexandria:ensure-list from) to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; VOID ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -34,7 +34,8 @@
 
 (define-type-constructor coalton:unit 0)
 (define-global-var* unit-type (tyapp (find-tycon 'coalton:unit)))
-(forward-declare-variable 'coalton:Unit unit-type)
+(unless (var-knownp 'coalton:Unit)
+  (forward-declare-variable 'coalton:Unit unit-type))
 
 ;; (macroexpand-1 `(coalton:coalton-toplevel
 ;;                   (coalton:define-type Unit
@@ -46,4 +47,5 @@
   (:METACLASS SINGLETON-CLASS))
 (DEFMETHOD PRINT-OBJECT ((SELF COALTON::UNIT/UNIT) STREAM)
   (FORMAT STREAM "#.~s" 'COALTON:UNIT))
+;;; FIXME: make this lexical
 (GLOBAL-VARS:DEFINE-GLOBAL-VAR* COALTON:UNIT (MAKE-INSTANCE 'COALTON::UNIT/UNIT))

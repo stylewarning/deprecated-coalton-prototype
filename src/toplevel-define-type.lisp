@@ -257,6 +257,7 @@ where
                             (list
                              `(defun ,name ,args
                                 (make-instance ',class-name :value (vector ,@args)))
+                             ;; FIXME: make lexical
                              `(define-global-var* ,name #',name))))))
        ',tycon-name)))
 
