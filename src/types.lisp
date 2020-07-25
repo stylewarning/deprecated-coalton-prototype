@@ -130,6 +130,9 @@ If NAME is not known, it will be made known to the global type database."
 Types are equivalent when the structure (TYAPP and TYFUN) matches and there exists a bijection between TYVARs of each type."
   (declare (type ty type1 type2)
            (values boolean))
+  ;; VAR-TABLE is an alist with entries
+  ;;
+  ;;     (tyvar-id . tyvar-id)
   (let ((var-table nil))
     (labels ((%type= (ty1 ty2)
                (let ((pty1 (prune ty1))
@@ -137,16 +140,24 @@ Types are equivalent when the structure (TYAPP and TYFUN) matches and there exis
                  (cond
                    ((and (tyvar-p pty1)
                          (tyvar-p pty2))
-                    (let ((pair1 (find (tyvar-id pty1) var-table :key #'car :test #'=))
-                          (pair2 (find (tyvar-id pty2) var-table :key #'car :test #'=)))
+                    (let ((pair1 (find (tyvar-id pty1) var-table :key #'car))
+                          (pair2 (find (tyvar-id pty2) var-table :key #'car)))
                       (cond
-                        ((equal pair1 pair2)
-                         (when (null pair1)
-                           (push (list (tyvar-id pty1) (tyvar-id pty2))
-                                 var-table))
+                        ((and (null pair1) (null pair2))
+                         ;; Push both (ID1 ID2) and (ID2 ID1) onto the
+                         ;; table.
+                         (pushnew (cons (tyvar-id pty1) (tyvar-id pty2)) var-table :key #'car)
+                         (pushnew (cons (tyvar-id pty2) (tyvar-id pty1)) var-table :key #'car)
+                         ;; Assume these types are equal.
                          t)
+                        ((or (null pair1) (null pair2))
+                         ;; If a match was found for one and not the
+                         ;; other, it's guaranteed not equal.
+                         nil)
                         (t
-                         nil))))
+                         ;; Check that A -> B and B -> A are compatible.
+                         (and (eql (car pair1) (cdr pair2))
+                              (eql (cdr pair1) (car pair2)))))))
                    ((and (tyfun-p pty1)
                          (tyfun-p pty2))
                     (and
