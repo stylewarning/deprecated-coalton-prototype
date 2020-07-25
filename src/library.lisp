@@ -74,8 +74,22 @@
 
 ;;; Boolean
 (coalton-toplevel
-  (define (not x) (if x False True))
-  (define (complement f) (compose not f)))
+  (define (not x)          (if x False True))
+  (define (binary-and x y) (if x y False))
+  (define (binary-or x y)  (if x True y))
+  (define (complement f)   (compose not f)))
+
+(cl:defmacro and (x cl:&rest xs)
+  (cl:reduce (cl:lambda (x acc)
+               `(binary-and ,x ,acc))
+             (cl:cons x xs)
+             :from-end cl:t))
+
+(cl:defmacro or (x cl:&rest xs)
+  (cl:reduce (cl:lambda (x acc)
+               `(binary-or ,x ,acc))
+             (cl:cons x xs)
+             :from-end cl:t))
 
 ;;; Strings
 (coalton-toplevel
