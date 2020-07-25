@@ -11,7 +11,9 @@
   (or (lexical-cell symbol)
       (setf (lexical-cell symbol)
             ;; Intentionally obtuse name.
-            (intern (format nil "(lexical) ~A::~A" (package-name (symbol-package symbol)) symbol)
+            (intern (format nil "(lexical) ~A::~A"
+                            (package-name (symbol-package symbol))
+                            symbol)
                     '#:coalton-global-symbols))))
 
 (defmacro lexical-value (var)
