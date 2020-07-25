@@ -27,6 +27,7 @@
                (:file "compile-value")
                (:file "toplevel-declare")
                (:file "toplevel-define-type")
+               (:file "global-lexical")
                (:file "toplevel-define")
                (:file "coalton")
                (:file "faux-macros")

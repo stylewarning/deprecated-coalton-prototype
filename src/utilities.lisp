@@ -30,3 +30,35 @@
 
 (defun style-warn (format-control &rest format-args)
   (apply #'alexandria:simple-style-warning format-control format-args))
+
+(defmacro include-if (condition &body body)
+  `(when ,condition
+     (list ,@ (remove nil body))))
+
+(defmacro define-symbol-property (property-accessor &key
+                                                      (type nil type-provided)
+                                                      documentation)
+  "Define an accessor for a symbol property.
+
+Implementation notes: These notes aren't relevant to users of this macro, but are Good To Know.
+
+    * The symbol's property is stored as a part of the symbol's plist.
+
+    * The plist key is just the name of the accessor.
+    "
+  (check-type property-accessor symbol)
+  (check-type documentation (or null string))
+  (let ((symbol (gensym "SYMBOL"))
+        (new-value (gensym "NEW-VALUE")))
+    `(progn
+       (declaim (inline ,property-accessor (setf ,property-accessor)))
+       ,@(include-if type-provided
+           `(declaim (ftype (function (symbol) (or null ,type)) ,property-accessor))
+           `(declaim (ftype (function (,type symbol) ,type) (setf ,property-accessor))))
+       (defun ,property-accessor (,symbol)
+         ,@(include-if documentation documentation)
+         (get ,symbol ',property-accessor))
+       (defun (setf ,property-accessor) (,new-value ,symbol)
+         (setf (get ,symbol ',property-accessor) ,new-value))
+       ;; Return the name defined.
+       ',property-accessor)))
