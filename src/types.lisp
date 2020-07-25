@@ -221,7 +221,7 @@ Types are equivalent when the structure (TYAPP and TYFUN) matches and there exis
     (tyfun
      (let ((from (mapcar #'unparse-type (tyfun-from ty)))
            (to (unparse-type (tyfun-to ty))))
-       `(coalton:-> ,from ,to)))))
+       `(coalton:fn ,@from coalton:-> ,to)))))
 
 (defun prune (ty)
   (etypecase ty

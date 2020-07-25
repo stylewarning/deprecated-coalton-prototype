@@ -59,7 +59,7 @@
 
 ;;; Erroring
 (coalton-toplevel
- (declare error (-> String t))
+ (declare error (fn String -> t))
  (define (error str)
    (lisp t (cl:error "~A" str))))
 
@@ -79,11 +79,11 @@
 
 ;;; Strings
 (coalton-toplevel
-  (declare concat (-> (String String) String))
+  (declare concat (fn String String -> String))
   (define (concat a b) (lisp String
                          (cl:concatenate 'cl:string a b)))
 
-  (declare string-length (-> String Integer))
+  (declare string-length (fn String -> Integer))
   (define (string-length s) (lisp Integer (cl:length s))))
 
 ;;; Comparators and Predicates
@@ -93,7 +93,7 @@
                         :for op :in names
                         :for clop := (cl:intern (cl:symbol-name op) :cl)
                         :append (cl:list
-                                 `(declare ,op (-> (Integer Integer) Boolean))
+                                 `(declare ,op (fn Integer Integer -> Boolean))
                                  `(define (,op x y) (lisp Boolean
                                                       (lisp-boolean-to-coalton-boolean
                                                        (,clop x y))))))))
@@ -103,7 +103,7 @@
                         :for op :in names
                         :for clop := (cl:intern (cl:symbol-name op) :cl)
                         :append (cl:list
-                                 `(declare ,op (-> (Integer) Boolean))
+                                 `(declare ,op (fn Integer -> Boolean))
                                  `(define (,op x) (lisp Boolean
                                                     (lisp-boolean-to-coalton-boolean
                                                      (,clop x)))))))))
@@ -112,20 +112,20 @@
 
 ;;; Arithmetic
 (coalton-toplevel
-  (declare + (-> (Integer Integer) Integer))
+  (declare + (fn Integer Integer -> Integer))
   (define (+ x y) (lisp Integer (cl:+ x y)))
   (define (1+ x) (+ 1 x))
 
-  (declare - (-> (Integer Integer) Integer))
+  (declare - (fn Integer Integer -> Integer))
   (define (- x y) (lisp Integer (cl:- x y)))
   (define (1- x) (- x 1))
   (define (~ x) (- 0 x))                ; ML-ism
 
-  (declare * (-> (Integer Integer) Integer))
+  (declare * (fn Integer Integer -> Integer))
   (define (* x y) (lisp Integer (cl:* x y)))
   (define (double n) (* n 2))
 
-  (declare / (-> (Integer Integer) Integer))
+  (declare / (fn Integer Integer -> Integer))
   (define (/ x y) (lisp Integer (cl:values (cl:floor x y))))
   (define (half n) (/ n 2))
 
@@ -138,7 +138,7 @@
   (define-type (Ref t)
     (Ref t))
 
-  (declare mutate-cell (-> ((Ref t) t) Unit))
+  (declare mutate-cell (fn (Ref t) t -> Unit))
   (define (mutate-cell r v)
     (lisp Unit
       (cl:progn
@@ -229,7 +229,7 @@
 
 ;; Grab Bag
 (coalton-toplevel
-  (declare integer-name (-> Integer String))
+  (declare integer-name (fn Integer -> String))
   (define (integer-name n)
     (lisp String
       (cl:format cl:nil "~R" n))))

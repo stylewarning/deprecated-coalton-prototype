@@ -12,10 +12,9 @@
   (let ((*package* (find-package "KEYWORD"))
         (*print-pretty* nil))
     (maphash (lambda (sym entry)
-               (format stream "~A (package: ~A) (internal: ~S)~%    :: ~A~%"
+               (format stream "~A (package: ~A)~%    :: ~A~%"
                        sym
                        (package-name (symbol-package sym))
-                       (entry-internal-name entry)
                        (unparse-type (or (entry-declared-type entry)
                                          (entry-derived-type entry)))))
              symbol-table))

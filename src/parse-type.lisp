@@ -7,6 +7,7 @@
 ;;;    <type expr> := <type alias>                       ; TODO!
 ;;;                 | <type variable>
 ;;;                 | <nullary type constructor>
+;;;                 | (fn <type expr>* -> <type-expr>)
 ;;;                 | (<type constructor> <type expr>*)
 
 (defun parse-type-expression (whole-expr &key variable-assignments
@@ -40,21 +41,41 @@ EXTRA-TYCONS is a list of tycons that are perhaps not globally defined yet. Thes
                  (error-parsing whole-expr "Unknown type constructor ~S" expr))
                (tyapp (find-it expr)))
 
+             (parse-function (expr)
+               (let ((arrow (position 'coalton:-> expr)))
+                 (when (null arrow)
+                   (error-parsing whole-expr "Invalid function type because it lacks an arrow: ~S" expr))
+                 (let ((from (subseq expr 1 arrow)) ; exclude FN symbol
+                       (to   (subseq expr (1+ arrow))))
+                   (cond
+                     ((null to) (error-parsing whole-expr "Can't have an empty return type in function type: ~S" expr))
+                     ((not (null (rest to))) (error-parsing whole-expr "Can't have more than one return type in function type: ~S" expr)))
+                   ;; parse out the input and output types
+                   (setf from (mapcar #'parse from))
+                   (setf to   (parse (first to)))
+                   ;; return the parsed type
+                   (tyfun from to))))
+
              (parse-application (expr)
-               (if (eq 'coalton:-> (first expr))
-                   (destructuring-bind (arrow from to) expr
-                     (declare (ignore arrow))
-                     (tyfun (mapcar #'parse (alexandria:ensure-list from))
-                            (parse to)))
-                   (destructuring-bind (tycon &rest args) expr
-                     (unless (symbolp tycon)
-                       (error-parsing whole-expr "Invalid part of type expression: ~S" tycon))
-                     (unless (knownp tycon)
-                       (error-parsing whole-expr "Unknown type constructor ~S" tycon))
-                     ;; TODO: Make sure arity is correct!
-                     (apply #'tyapp
-                            (find-it tycon)
-                            (mapcar #'parse args)))))
+               (cond
+                 ;; Old syntax for doing function types not supported.
+                 ((eq 'coalton:-> (first expr))
+                  (error-parsing whole-expr "Function types have syntax (FN <ty>* -> <ty>). Got: ~S" expr))
+
+                 ;; New syntax for doing function types.
+                 ((eq 'coalton:fn (first expr)) (parse-function expr))
+
+                 ;; Other applications.
+                 (t
+                  (destructuring-bind (tycon &rest args) expr
+                    (unless (symbolp tycon)
+                      (error-parsing whole-expr "Invalid part of type expression: ~S" tycon))
+                    (unless (knownp tycon)
+                      (error-parsing whole-expr "Unknown type constructor ~S" tycon))
+                    ;; TODO: Make sure arity is correct!
+                    (apply #'tyapp
+                           (find-it tycon)
+                           (mapcar #'parse args))))))
 
              (parse (expr)
                (typecase expr

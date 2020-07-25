@@ -54,7 +54,7 @@ Use the `coalton:lisp` macro to embed Lisp code inside of a Coalton program. Of 
 ```commonlisp
 ;; Coalton
 (coalton-toplevel
-  (declare integer-name (-> Integer String))
+  (declare integer-name (fn Integer -> String))
   (define (integer-name n)
     (lisp String
       (cl:format cl:nil "~R" n))))
@@ -120,7 +120,7 @@ We can inspect what Coalton inferred the type of `gg` to be using `type-of`. Not
 
 ```
 COALTON-USER> (type-of 'gg)
-(-> BOOLEAN (EITHER INTEGER BOOLEAN))
+(FN BOOLEAN -> (EITHER INTEGER BOOLEAN))
 ```
 
 The Coalton library defines `Liszt`, whose name will surely change. It's a homogeneous list type, and as usual, we can construct values in Lisp.
