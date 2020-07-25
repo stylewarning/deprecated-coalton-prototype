@@ -8,13 +8,12 @@
   (define-type Unit
     Unit)
 
+  #+ignore
+  (define-type Void)
+
   (define-type coalton:Boolean
     coalton:True
     coalton:False)
-
-  ;; Defined in early-types.lisp
-  #+ignore
-  (define-type Void)
 
   (define-type (Maybe t)
     Nothing
@@ -32,6 +31,13 @@
     (Leaf s)
     (Branch t (Binary-Tree s t) (Binary-Tree s t))))
 
+(cl:defmacro Liszt (cl:&rest list-elements)
+  (cl:reduce (cl:lambda (x acc)
+               `(Kons ,x ,acc))
+             list-elements
+             :from-end cl:t
+             :initial-value 'Knil))
+
 (cl:defmacro coalton:if (expr then else)
   `(match ,expr
      (True ,then)
@@ -43,7 +49,7 @@
               ,then-a
               (cond ,@clauses))
          (cl:progn
-           (cl:assert (cl:eq 'else clause-a) () "COND must have an ELSE clause.")
+           (cl:assert (cl:eq 'else clause-a) () "COALTON:COND must have an ELSE clause.")
            then-a)))
 
 (cl:declaim (cl:inline lisp-boolean-to-coalton-boolean))
