@@ -15,6 +15,7 @@
   :serial t
   :components ((:file "package")
                (:file "utilities")
+               (:file "global-lexical")
                (:file "node")
                (:file "types")
                (:file "parse-type")
@@ -27,7 +28,6 @@
                (:file "compile-value")
                (:file "toplevel-declare")
                (:file "toplevel-define-type")
-               (:file "global-lexical")
                (:file "toplevel-define")
                (:file "coalton")
                (:file "faux-macros")

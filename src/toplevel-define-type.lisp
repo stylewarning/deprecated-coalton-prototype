@@ -244,12 +244,9 @@ where
        ,@(loop :for (kind name ty) :in ctors
                :for class-name := (assemble-ctor-class-name tycon-name name)
                :append (ecase kind
-                         ;; TODO: Should we emulate a global
-                         ;; lexical? The type inference assumes as
-                         ;; much.
                          (:variable
                           (list
-                           `(define-global-var* ,name (make-instance ',class-name))))
+                           `(define-global-lexical ,name (make-instance ',class-name))))
                          (:function
                           (let* ((arity (tyfun-arity ty))
                                  (args (loop :repeat arity
@@ -257,8 +254,7 @@ where
                             (list
                              `(defun ,name ,args
                                 (make-instance ',class-name :value (vector ,@args)))
-                             ;; FIXME: make lexical
-                             `(define-global-var* ,name #',name))))))
+                             `(define-global-lexical ,name #',name))))))
        ',tycon-name)))
 
 (defun process-toplevel-type-definitions (deftype-forms)

@@ -21,6 +21,8 @@
 
 ;;; TODO: Allow the type to be declared.
 (defmacro define-global-lexical (var val)
-  `(eval-when (:compile-toplevel :load-toplevel :execute)
+  `(progn
+     (eval-when (:compile-toplevel :load-toplevel :execute)
+       (define-symbol-macro ,var (lexical-value ,var)))
      (setf (lexical-value ,var) ,val)
-     (define-symbol-macro ,var (lexical-value ,var))))
+     ',var))
