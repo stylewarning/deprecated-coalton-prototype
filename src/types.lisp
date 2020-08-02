@@ -248,12 +248,11 @@ Types are equivalent when the structure (TYAPP and TYFUN) matches and there exis
   (etypecase ty
     ;; Constrained types
     (cty
-     `(coalton:for ,@(mapcar #'unparse-type (cty-constraints ty))
+     `(coalton:for ,@(mapcar (lambda (cx)
+                               `(,(cx-class cx) ,(unparse-type (cx-variable cx))))
+                             (cty-constraints ty))
                    coalton:=>
                    ,(unparse-type (cty-expr ty))))
-
-    (cx
-     `(,(cx-class ty) ,(unparse-type (cx-variable ty))))
 
     ;; TY substructures
     (tyvar
@@ -283,6 +282,9 @@ Types are equivalent when the structure (TYAPP and TYFUN) matches and there exis
      ty)
 
     (tyfun
+     ty)
+
+    (cty
      ty)))
 
 (defun occurs-in-type (v t2)
@@ -308,6 +310,12 @@ Types are equivalent when the structure (TYAPP and TYFUN) matches and there exis
     (labels ((freshrec (tp)
                (let ((ptp (prune tp)))
                  (etypecase ptp
+                   (cty
+                    (make-cty (freshrec (cty-expr ptp))
+                              :constraints (mapcar (lambda (cx)
+                                                     (cx (cx-class cx)
+                                                         (freshrec (cx-variable cx))))
+                                                   (cty-constraints ptp))))
                    (tyvar
                     (if (not (is-generic ptp non-generic))
                         ptp

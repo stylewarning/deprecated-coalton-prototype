@@ -23,3 +23,8 @@
   (forward-declare-variable '== (parse-type-expression
                                  '(coalton:for (Eq a) coalton:=> (coalton:fn a a coalton:-> coalton:Boolean)))
                             t))
+
+(unless (var-knownp 'gt)
+  (forward-declare-variable 'gt (parse-type-expression
+                                 '(coalton:for (Ord a) coalton:=> (coalton:fn a a coalton:-> coalton:Boolean)))
+                            t))
