@@ -18,6 +18,7 @@
                (:file "global-lexical")
                (:file "node")
                (:file "types")
+               (:file "class")
                (:file "parse-type")
                (:file "parse-value")
                (:file "global-environment")
@@ -34,7 +35,8 @@
                (:file "coalton")
                (:file "faux-macros")
                (:file "impl-debug-routines")
-               (:file "library")))
+               (:file "library")
+               (:file "temp")))
 
 (asdf:defsystem #:coalton/tests
   :description "Tests for COALTON."

@@ -16,6 +16,7 @@
 ;;;                 | (<type constructor> <type expr>*)
 
 (defun parse-arrow (arrow list &key error)
+  "Parse a list that looks like (... ARROW ...) into two sub-lists, one of elements before the arrow, and one of elements after the arrow. ARROW can really be any symbol. If the arrow isn't found, call ERROR."
   (let ((arrow-position (position arrow list)))
     (when (null arrow-position)
       (funcall error))
