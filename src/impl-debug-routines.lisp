@@ -33,3 +33,7 @@
                        (tycon-constructors entry)))
              symbol-table))
   (values))
+
+(defun coalton:type-of (expr)
+  "Return the (unparsed) type of the Coalton expression EXPR."
+  (unparse-type (derive-type (parse-form expr))))
