@@ -218,7 +218,13 @@
                     l
                     (%tabulate (1- n)
                                (Kons (f (1- n)) l))))))
-      (%tabulate n Knil))))
+      (%tabulate n Knil)))
+
+  (define (range a b)
+    (cond
+      ((>= a b) Knil)
+      (else
+       (tabulate ((curry +) a) (- b a))))))
 
 (coalton-toplevel
   (define (reverse l) (fold Kons Knil l))
