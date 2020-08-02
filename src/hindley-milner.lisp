@@ -198,5 +198,3 @@
                     ;; Return the type of the entire expression.
                     result-ty))))))
     (analyze value nil nil)))
-
-

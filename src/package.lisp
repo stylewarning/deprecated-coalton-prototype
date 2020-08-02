@@ -10,8 +10,12 @@
    #:coalton
    #:define
    #:define-type-alias
-   #:define-type)
+   #:define-type
+   #:define-class
+   #:define-instance)
   (:export
+   #:for
+   #:=>
    #:->
    #:void
    #:integer

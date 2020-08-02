@@ -30,6 +30,12 @@
 (define-coalton-editor-macro coalton:define-type (name &body definition)
   "Create a new algebraic data type named NAME. (Coalton top-level operator.)")
 
+(define-coalton-editor-macro coalton:define-class (name &body definition)
+  "TODO (Coalton top-level operator.)")
+
+(define-coalton-editor-macro coalton:define-instance (name &body definition)
+  "TODO (Coalton top-level operator.)")
+
 (define-coalton-editor-macro coalton:declare (var type)
   "Declare the type of a variable. (Coalton top-level operator.)")
 

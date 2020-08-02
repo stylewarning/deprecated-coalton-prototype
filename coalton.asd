@@ -29,6 +29,8 @@
                (:file "toplevel-declare")
                (:file "toplevel-define-type")
                (:file "toplevel-define")
+               (:file "toplevel-define-class")
+               (:file "toplevel-define-instance")
                (:file "coalton")
                (:file "faux-macros")
                (:file "impl-debug-routines")

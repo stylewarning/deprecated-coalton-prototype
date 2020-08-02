@@ -124,6 +124,30 @@
   (define-comparators = /= > < >= <=)
   (define-predicates evenp oddp plusp minusp zerop))
 
+
+#+igno
+(coalton-toplevel
+  (define-class (Eq a)
+    (== (fn a a -> Boolean)))
+
+  ;; (fn (Eq a) => a a -> Boolean)
+  (define (/= a b) (not (== a b)))
+
+  (define-instance (Eq Boolean)
+    (define (== a b)
+      (or (and a       b)
+          (and (not a) (not b)))))
+
+  (define-instance ((Eq a) => (Eq (Maybe a)))
+    (define (== a b)
+      (match a
+        ((Just x) (match b
+                    ((Just y) (== x y))
+                    (Nothing  coalton:False)))
+        (Nothing  (match b
+                    ((Just _) coalton:False)
+                    (Nothing  coalton:True)))))))
+
 ;;; Arithmetic
 (coalton-toplevel
   (declare + (fn Integer Integer -> Integer))

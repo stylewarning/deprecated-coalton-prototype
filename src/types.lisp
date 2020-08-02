@@ -2,6 +2,11 @@
 
 (in-package #:coalton-impl)
 
+(defstruct (cx (:constructor cx (class variable)))
+  "A constraint (abbreviated CX), also known as a \"predicate\"."
+  (class    nil :type symbol :read-only t)
+  (variable nil :type tyvar  :read-only t))
+
 ;;; A type constructor is not a constructor for a value, but a
 ;;; constructor for a *type*! Get with the program!
 (defstruct tycon
@@ -78,6 +83,11 @@ If NAME is not known, it will be made known to the global type database."
         :when (find name (tycon-constructors tycon))
           :do (return tycon)
         :finally (return nil)))
+
+(defstruct (cty (:constructor make-cty (expr &key constraints)))
+  "A type with constraints on quantified variables."
+  (constraints nil :type list :read-only t) ; List of CX
+  (expr        nil :type ty   :read-only t))
 
 ;;; TY is forward declared in node.lisp
 
@@ -216,9 +226,36 @@ Types are equivalent when the structure (TYAPP and TYFUN) matches and there exis
   (or (tyvar-name v)
       (setf (tyvar-name v) (gensym "T"))))
 
+(defun extract-variables (ty)
+  "Extract variables from the type expression TY."
+  (let ((vars '()))
+    (labels ((descend (ty)
+               (etypecase ty
+                 (tyvar
+                  (push ty vars))
+
+                 (tyapp
+                  (mapc #'descend (tyapp-types ty)))
+
+                 (tyfun
+                  (mapc #'descend (tyfun-from ty))
+                  (descend (tyfun-to ty))))))
+      (descend ty))
+    vars))
+
 (defun unparse-type (ty)
   "Convert a type TY back into an S-expression representation (which could be parsed back again with PARSE-TYPE)."
   (etypecase ty
+    ;; Constrained types
+    (cty
+     `(coalton:for ,@(mapcar #'unparse-type (cty-constraints ty))
+                   coalton:=>
+                   ,(unparse-type (cty-expr ty))))
+
+    (cx
+     `(,(cx-class ty) ,(unparse-type (cx-variable ty))))
+
+    ;; TY substructures
     (tyvar
      (if (tyvar-instance ty)
          (unparse-type (tyvar-instance ty))
