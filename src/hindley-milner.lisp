@@ -62,7 +62,8 @@
                   (string  string-type)))
 
                (node-variable
-                ;; XXX: Check the global environment!!!
+                ;; The global environment is checked as a part of
+                ;; LOOKUP-TYPE.
                 (let ((ty
                         (lookup-type (node-variable-name expr) env non-generic)))
                   (etypecase ty
