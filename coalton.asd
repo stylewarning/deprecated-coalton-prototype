@@ -18,6 +18,8 @@
                (:file "global-lexical")
                (:file "node")
                (:file "types")
+               (:file "type-errors")
+               (:file "unify")
                (:file "class")
                (:file "parse-type")
                (:file "parse-value")

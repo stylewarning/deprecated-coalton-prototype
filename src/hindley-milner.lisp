@@ -2,6 +2,11 @@
 
 (in-package #:coalton-impl)
 
+(defun assoc-find (env name)
+  (let ((entry (assoc name env)))
+    (and entry
+         (cdr entry))))
+
 (defun assoc-add (env name val)
   (labels ((rec (current-assoc new-assoc seen)
              (if (endp current-assoc)
