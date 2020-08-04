@@ -18,6 +18,7 @@
                (:file "global-lexical")
                (:file "node")
                (:file "types")
+               (:file "tycon-database")
                (:file "type-errors")
                (:file "unify")
                (:file "class")
