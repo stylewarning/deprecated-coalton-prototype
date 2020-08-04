@@ -70,7 +70,7 @@
                     (ty ty)
                     (cty
                      (add-cxs (cty-constraints ty))
-                     (cty-expr ty)))))
+                     (cty-type ty)))))
 
                (node-abstraction
                 (let* ((vars (node-abstraction-vars expr))
@@ -215,4 +215,4 @@
     (let ((ty (analyze value nil nil)))
       (if (null CONSTRAINTS)
           ty
-          (make-cty ty :constraints CONSTRAINTS)))))
+          (cty ty :constraints CONSTRAINTS)))))

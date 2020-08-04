@@ -108,7 +108,7 @@ EXTRA-TYCONS is a list of tycons that are perhaps not globally defined yet. Thes
 
                  (if (endp from)
                      (parse (first to))
-                     (make-cty (parse (first to)) :constraints (mapcar #'parse-constraint from)))))
+                     (cty (parse (first to)) :constraints (mapcar #'parse-constraint from)))))
 
              (parse-constraint (constraint)
                (unless (and (alexandria:proper-list-p constraint)

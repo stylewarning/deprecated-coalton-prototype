@@ -15,7 +15,7 @@
 (defparameter *eq-int
   (make-class-instance
    :type-class 'Eq
-   :instantiated-type (make-cty (parse-type-expression 'coalton:integer))
+   :instantiated-type (cty integer-type)
    :implementations (vector
                      (cons '== (parse-form 'coalton-user::=)))))
 

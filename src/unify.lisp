@@ -39,7 +39,7 @@
                                `(,(cx-class cx) ,(unparse-type (cx-type cx))))
                              (cty-constraints ty))
                    coalton:=>
-                   ,(unparse-type (cty-expr ty))))
+                   ,(unparse-type (cty-type ty))))
 
     ;; TY substructures
     (tyvar
@@ -72,6 +72,7 @@
      ty)
 
     (cty
+     ;; FIXME: descend and prune????
      ty)))
 
 (defun occurs-in-type (v t2)
@@ -80,6 +81,7 @@
     (if (equalp v pruned-t2)
         t
         (typecase pruned-t2
+          ;; FIXME: add CTY???
           (tyapp (occurs-in v (tyapp-types pruned-t2)))
           (tyfun (occurs-in v (cons (tyfun-to pruned-t2) (tyfun-from pruned-t2))))
           (otherwise nil)))))
@@ -98,11 +100,11 @@
                (let ((ptp (prune tp)))
                  (etypecase ptp
                    (cty
-                    (make-cty (freshrec (cty-expr ptp))
-                              :constraints (mapcar (lambda (cx)
-                                                     (cx (cx-class cx)
-                                                         (freshrec (cx-type cx))))
-                                                   (cty-constraints ptp))))
+                    (cty (freshrec (cty-type ptp))
+                         :constraints (mapcar (lambda (cx)
+                                                (cx (cx-class cx)
+                                                    (freshrec (cx-type cx))))
+                                              (cty-constraints ptp))))
                    (tyvar
                     (if (not (is-generic ptp non-generic))
                         ptp
@@ -169,5 +171,8 @@
                          :first-type type1
                          :second-type type2
                          :mismatched-types (list ty1 ty2)))))))
-    (%unify type1 type2))
+    ;; We don't need UNIFY to know about the constraints. It just
+    ;; needs to work on TY's.
+    (%unify (unconstrained-type type1)
+            (unconstrained-type type2)))
   nil)

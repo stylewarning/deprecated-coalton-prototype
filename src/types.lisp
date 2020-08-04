@@ -31,6 +31,11 @@
 
 ;;; CTY, TY, and CX are forward declared (or defined) in node.lisp
 
+(defun unconstrained-type (ty)
+  (etypecase ty
+    (ty ty)
+    (cty (cty-type ty))))
+
 (defstruct (tyvar (:include ty)
                   (:constructor %make-tyvar (id)))
   "A type variable."

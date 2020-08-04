@@ -16,10 +16,10 @@ For instance, in (Eq t, Ord t) => t -> t, there are two CX's, \"Eq t\" and \"Ord
 
 (defstruct (ty (:constructor nil)))
 
-(defstruct (cty (:constructor make-cty (expr &key constraints)))
+(defstruct (cty (:constructor cty (type &key constraints)))
   "A type with constraints on quantified variables."
   (constraints nil :type list :read-only t) ; List of CX (defined in types.lisp)
-  (expr        nil :type ty   :read-only t))
+  (type        nil :type ty   :read-only t))
 
 (defun type-list-p (thing)
   (and (alexandria:proper-list-p thing)
