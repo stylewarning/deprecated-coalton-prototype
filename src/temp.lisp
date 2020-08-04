@@ -2,19 +2,19 @@
 
 (defparameter *eq-class
   (make-type-class
-   :name 'eq
+   :name 'Eq
    :members (list
              (cons '== (parse-type-expression '(coalton:fn a a coalton:-> coalton:boolean))))))
 
 (defparameter *countable-class
   (make-type-class
-   :name 'countable
+   :name 'Countable
    :members (list
              (cons 'size (parse-type-expression '(coalton:fn a coalton:-> coalton:integer))))))
 
 (defparameter *eq-int
   (make-class-instance
-   :type-class 'eq
+   :type-class 'Eq
    :instantiated-type (make-cty (parse-type-expression 'coalton:integer))
    :implementations (vector
                      (cons '== (parse-form 'coalton-user::=)))))
@@ -24,7 +24,11 @@
                                  '(coalton:for (Eq a) coalton:=> (coalton:fn a a coalton:-> coalton:Boolean)))
                             t))
 
-(unless (var-knownp 'gt)
-  (forward-declare-variable 'gt (parse-type-expression
-                                 '(coalton:for (Ord a) coalton:=> (coalton:fn a a coalton:-> coalton:Boolean)))
+(unless (var-knownp 'size)
+  (forward-declare-variable 'size (parse-type-expression
+                                   '(coalton:for (Countable a) coalton:=> (coalton:fn a coalton:-> coalton:Integer)))
                             t))
+
+(defparameter *expr*
+  '(coalton:fn (n x)
+    (== n (size x))))

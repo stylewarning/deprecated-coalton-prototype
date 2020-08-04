@@ -7,8 +7,7 @@
 
 (defvar *next-variable-id* 0)
 (defun make-variable ()
-  (prog1 (%make-tyvar :id *next-variable-id*)
-    (incf *next-variable-id*)))
+  (%make-tyvar (incf *next-variable-id*)))
 
 (defun variable-name (v)
   (or (tyvar-name v)

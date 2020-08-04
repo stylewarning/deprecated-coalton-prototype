@@ -6,15 +6,6 @@
 ;;;
 ;;; unify.lisp also has some useful utilities acting on types.
 
-(defstruct (cx (:constructor cx (class type)))
-  "A constraint (abbreviated CX). This is an object of the set Q in the constrained type
-
-    Q => T.
-
-For instance, in (Eq t, Ord t) => t -> t, there are two CX's, \"Eq t\" and \"Ord t\"."
-  (class nil :type symbol :read-only t)
-  (type  nil :type ty     :read-only t))
-
 ;;; A type constructor is not a constructor for a value, but a
 ;;; constructor for a *type*! Get with the program!
 (defstruct tycon
@@ -38,18 +29,17 @@ For instance, in (Eq t, Ord t) => t -> t, there are two CX's, \"Eq t\" and \"Ord
   ;; nice to make it read-only though.
   (constructors nil      :type alexandria:proper-list))
 
-(defstruct (cty (:constructor make-cty (expr &key constraints)))
-  "A type with constraints on quantified variables."
-  (constraints nil :type list :read-only t) ; List of CX
-  (expr        nil :type ty   :read-only t))
-
-;;; TY is forward declared in node.lisp
+;;; CTY, TY, and CX are forward declared (or defined) in node.lisp
 
 (defstruct (tyvar (:include ty)
-                  (:constructor %make-tyvar))
+                  (:constructor %make-tyvar (id)))
   "A type variable."
+  ;; The identity of the TYVAR.
   (id       0   :type integer          :read-only t)
+  ;; This is what the type variable is found to be equal to (in the
+  ;; equational sense).
   (instance nil :type (or null ty)     :read-only nil)
+  ;; This is just a printable name.
   (name     nil :type (or null symbol) :read-only nil))
 
 (defstruct (tyapp (:include ty)
