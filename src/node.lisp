@@ -5,7 +5,21 @@
 (in-package #:coalton-impl)
 
 ;;; Types are fully defined in types.lisp
+(defstruct (cx (:constructor cx (class type)))
+  "A constraint (abbreviated CX). This is an object of the set Q in the constrained type
+
+    Q => T.
+
+For instance, in (Eq t, Ord t) => t -> t, there are two CX's, \"Eq t\" and \"Ord t\"."
+  (class nil :type symbol :read-only t)
+  (type  nil :type ty     :read-only t))
+
 (defstruct (ty (:constructor nil)))
+
+(defstruct (cty (:constructor cty (type &key constraints)))
+  "A type with constraints on quantified variables."
+  (constraints nil :type list :read-only t) ; List of CX (defined in types.lisp)
+  (type        nil :type ty   :read-only t))
 
 (defun type-list-p (thing)
   (and (alexandria:proper-list-p thing)

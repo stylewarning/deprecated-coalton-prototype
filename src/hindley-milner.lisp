@@ -2,6 +2,11 @@
 
 (in-package #:coalton-impl)
 
+(defun assoc-find (env name)
+  (let ((entry (assoc name env)))
+    (and entry
+         (cdr entry))))
+
 (defun assoc-add (env name val)
   (labels ((rec (current-assoc new-assoc seen)
              (if (endp current-assoc)
@@ -40,10 +45,13 @@
                      (error "Couldn't determine type of known variable ~S." name))))
         (funcall continue name))))
 
-(defun derive-type (value)
+(defun derive-type (value &aux constraints)
   "Derive the type of the Coalton value expressed as a NODE."
   (check-type value node)
-  (labels ((analyze (expr env non-generic)
+  (labels ((add-cxs (cxs)
+             (setf CONSTRAINTS (append CONSTRAINTS cxs)))
+
+           (analyze (expr env non-generic)
              (setf (node-derived-type expr) (analyze-expr expr env non-generic)))
 
            (analyze-expr (expr env non-generic)
@@ -54,8 +62,15 @@
                   (string  string-type)))
 
                (node-variable
-                ;; XXX: Check the global environment!!!
-                (lookup-type (node-variable-name expr) env non-generic))
+                ;; The global environment is checked as a part of
+                ;; LOOKUP-TYPE.
+                (let ((ty
+                        (lookup-type (node-variable-name expr) env non-generic)))
+                  (etypecase ty
+                    (ty ty)
+                    (cty
+                     (add-cxs (cty-constraints ty))
+                     (cty-type ty)))))
 
                (node-abstraction
                 (let* ((vars (node-abstraction-vars expr))
@@ -197,6 +212,7 @@
                     (unify value-ty expected-value-ty)
                     ;; Return the type of the entire expression.
                     result-ty))))))
-    (analyze value nil nil)))
-
-
+    (let ((ty (analyze value nil nil)))
+      (if (null CONSTRAINTS)
+          ty
+          (cty ty :constraints CONSTRAINTS)))))

@@ -18,6 +18,10 @@
                (:file "global-lexical")
                (:file "node")
                (:file "types")
+               (:file "tycon-database")
+               (:file "type-errors")
+               (:file "unify")
+               (:file "class")
                (:file "parse-type")
                (:file "parse-value")
                (:file "global-environment")
@@ -29,10 +33,13 @@
                (:file "toplevel-declare")
                (:file "toplevel-define-type")
                (:file "toplevel-define")
+               (:file "toplevel-define-class")
+               (:file "toplevel-define-instance")
                (:file "coalton")
                (:file "faux-macros")
                (:file "impl-debug-routines")
-               (:file "library")))
+               (:file "library")
+               (:file "temp")))
 
 (asdf:defsystem #:coalton/tests
   :description "Tests for COALTON."

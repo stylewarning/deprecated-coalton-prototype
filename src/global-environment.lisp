@@ -6,8 +6,9 @@
 
 (defstruct entry
   "An entry in the global value database."
-  (declared-type nil :type (or null ty))
-  (derived-type nil :type (or null ty))
+  (declared-type nil :type (or null ty cty))
+  (derived-type nil :type (or null ty cty))
+  (overloaded nil :type boolean)
   source-form
   node)
 
@@ -41,15 +42,25 @@
     (style-warn "Overwriting info entry for ~S" var))
   (setf (gethash var **global-value-definitions**) new-value))
 
-(defun forward-declare-variable (var &optional (declared-type nil declaredp))
+(defun var-overloaded-p (var)
+  (entry-overloaded (var-info var)))
+
+(defun (setf var-overloaded-p) (new-value var)
+  (setf (entry-overloaded (var-info var)) new-value))
+
+
+(defun forward-declare-variable (var &optional (declared-type nil declaredp)
+                                               (overloaded nil overloaded-provided-p))
   (check-type var symbol)
-  (check-type declared-type (or ty null))
+  (check-type declared-type (or ty cty null))
   (when (var-knownp var)
     (error "Can't forward declare ~S, which is already known." var))
   (setf (gethash var **global-value-definitions**)
         (make-entry))
   (when declaredp
     (setf (var-declared-type var) declared-type))
+  (when overloaded-provided-p
+    (setf (var-overloaded-p var) overloaded))
   var)
 
 (defun var-declared-type (var)
@@ -57,7 +68,7 @@
     (entry-declared-type info)))
 
 (defun (setf var-declared-type) (new-value var)
-  (check-type new-value ty)
+  (check-type new-value (or ty cty))
   (let ((info (var-info var)))
     (alexandria:when-let ((existing-declared-type (entry-declared-type info)))
       (when (type= existing-declared-type new-value)
@@ -80,7 +91,7 @@
     (entry-derived-type info)))
 
 (defun (setf var-derived-type) (new-value var)
-  (check-type new-value ty)
+  (check-type new-value (or ty cty))
   (let ((info (var-info var)))
     (alexandria:when-let ((existing-derived-type (entry-derived-type info)))
       (when (type= existing-derived-type new-value)

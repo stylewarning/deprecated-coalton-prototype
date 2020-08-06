@@ -4,11 +4,24 @@
 
 ;;; Grammar:
 ;;;
+;;;    <type> :=  <type expr>
+;;;            | (for <constraint>* => <type expr>)
+;;;
+;;;    <constraint> := (<class name> <type variable>)
+;;;
 ;;;    <type expr> := <type alias>                       ; TODO!
 ;;;                 | <type variable>
 ;;;                 | <nullary type constructor>
 ;;;                 | (fn <type expr>* -> <type-expr>)
 ;;;                 | (<type constructor> <type expr>*)
+
+(defun parse-arrow (arrow list &key error)
+  "Parse a list that looks like (... ARROW ...) into two sub-lists, one of elements before the arrow, and one of elements after the arrow. ARROW can really be any symbol. If the arrow isn't found, call ERROR."
+  (let ((arrow-position (position arrow list)))
+    (when (null arrow-position)
+      (funcall error))
+    (values (subseq list 0 arrow-position)
+            (subseq list (1+ arrow-position)))))
 
 (defun parse-type-expression (whole-expr &key variable-assignments
                                               extra-tycons)
@@ -42,19 +55,20 @@ EXTRA-TYCONS is a list of tycons that are perhaps not globally defined yet. Thes
                (tyapp (find-it expr)))
 
              (parse-function (expr)
-               (let ((arrow (position 'coalton:-> expr)))
-                 (when (null arrow)
-                   (error-parsing whole-expr "Invalid function type because it lacks an arrow: ~S" expr))
-                 (let ((from (subseq expr 1 arrow)) ; exclude FN symbol
-                       (to   (subseq expr (1+ arrow))))
-                   (cond
-                     ((null to) (error-parsing whole-expr "Can't have an empty return type in function type: ~S" expr))
-                     ((not (null (rest to))) (error-parsing whole-expr "Can't have more than one return type in function type: ~S" expr)))
-                   ;; parse out the input and output types
-                   (setf from (mapcar #'parse from))
-                   (setf to   (parse (first to)))
-                   ;; return the parsed type
-                   (tyfun from to))))
+               (multiple-value-bind (from to)
+                   (parse-arrow 'coalton:-> (rest expr) ; exclude FN symbol
+                                :error (lambda ()
+                                         (error-parsing whole-expr "Invalid function type ~
+                                                                    because it lacks an ~
+                                                                    arrow: ~S" expr)))
+                 (cond
+                   ((null to) (error-parsing whole-expr "Can't have an empty return type in function type: ~S" expr))
+                   ((not (null (rest to))) (error-parsing whole-expr "Can't have more than one return type in function type: ~S" expr)))
+                 ;; parse out the input and output types
+                 (setf from (mapcar #'parse from))
+                 (setf to   (parse (first to)))
+                 ;; return the parsed type
+                 (tyfun from to)))
 
              (parse-application (expr)
                (cond
@@ -64,6 +78,10 @@ EXTRA-TYCONS is a list of tycons that are perhaps not globally defined yet. Thes
 
                  ;; New syntax for doing function types.
                  ((eq 'coalton:fn (first expr)) (parse-function expr))
+
+                 ;; Constrained types aren't valid here.
+                 ((eq 'coalton:for (first expr))
+                  (error-parsing whole-expr "Constrained types can't be embedded in a larger type."))
 
                  ;; Other applications.
                  (t
@@ -76,6 +94,35 @@ EXTRA-TYCONS is a list of tycons that are perhaps not globally defined yet. Thes
                     (apply #'tyapp
                            (find-it tycon)
                            (mapcar #'parse args))))))
+
+             (parse-constrained-type (expr)
+               (multiple-value-bind (from to)
+                   (parse-arrow 'coalton:=> (rest expr) ; exclude FOR symbol
+                                :error (lambda ()
+                                         (error-parsing whole-expr "Invalid constrained type ~
+                                                                    because it lacks an ~
+                                                                    arrow '=>': ~S" expr)))
+                 (cond
+                   ((null to) (error-parsing whole-expr "Constrained type requires a type to constrain: ~S" expr))
+                   ((not (null (rest to))) (error-parsing whole-expr "Only one type can be constrained: ~S" expr)))
+
+                 (if (endp from)
+                     (parse (first to))
+                     (cty (parse (first to)) :constraints (mapcar #'parse-constraint from)))))
+
+             (parse-constraint (constraint)
+               (unless (and (alexandria:proper-list-p constraint)
+                            (= 2 (length constraint)))
+                 (error-parsing whole-expr "Invalid constraint: ~S" constraint))
+               (destructuring-bind (class-name-expr variable-expr) constraint
+                 ;; Check that the class name is a symbol
+                 (unless (symbolp class-name-expr)
+                   (error-parsing whole-expr "Invalud constraint: ~S" constraint))
+                 (let ((class-name class-name-expr)
+                       (var        (parse variable-expr)))
+                   (unless (typep var 'tyvar)
+                     (error-parsing whole-expr "Invalid constraint: ~S" constraint))
+                   (cx class-name var))))
 
              (parse (expr)
                (typecase expr
@@ -93,5 +140,10 @@ EXTRA-TYCONS is a list of tycons that are perhaps not globally defined yet. Thes
 
                  (t
                   (error-parsing whole-expr "Invalid type expression: ~S" expr)))))
-      (values (parse whole-expr)
+      ;; A constrained type can only be at the "top level".
+      (values (if (and (alexandria:proper-list-p whole-expr)
+                       (not (endp whole-expr))
+                       (eq 'coalton:for (first whole-expr)))
+                  (parse-constrained-type whole-expr)
+                  (parse whole-expr))
               (alexandria:hash-table-alist table)))))
