@@ -288,11 +288,6 @@ Types are equivalent when the structure (TYAPP and TYFUN) matches and there exis
                            (freshrec (tyfun-to ptp))))))))
       (values (freshrec ty) (alexandria:hash-table-alist table)))))
 
-(defun assoc-find (env name)
-  (let ((entry (assoc name env)))
-    (and entry
-         (cdr entry))))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;; Type Error Conditions ;;;;;;;;;;;;;;;;;;;;;;;;
 
