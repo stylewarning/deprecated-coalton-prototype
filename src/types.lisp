@@ -81,6 +81,7 @@ If NAME is not known, it will be made known to the global type database."
 
 ;;; TY is forward declared in node.lisp
 
+;;; More type variable operations can be found in type-variables.lisp.
 (defstruct (tyvar (:include ty)
                   (:constructor %make-tyvar))
   "A type variable."

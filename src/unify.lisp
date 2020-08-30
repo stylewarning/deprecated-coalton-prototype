@@ -7,19 +7,29 @@
 (defun unify (type1 type2)
   ;; We use LABELS just so we can have a copy of the original TYPE1
   ;; and TYPE2 for error reporting purposes.
-  (labels ((%unify (ty1 ty2)
+  (labels ((instantiate! (tyvar ty)
+             "Instantiate TYVAR to the type TY."
+             (check-type tyvar tyvar)
+             (check-type ty ty)
+             (setf (tyvar-instance tyvar) ty))
+
+           (%unify (ty1 ty2)
              (let ((pty1 (prune ty1))
                    (pty2 (prune ty2)))
                (cond
                  ((tyvar-p pty1)
+                  ;; If they're equal, we don't need to instantiate.
                   (unless (equalp pty1 pty2)
+                    ;; If the type we are instantiating is inside of
+                    ;; what we with to instantiate with, then we have
+                    ;; type recursion we can't handle.
                     (when (occurs-in-type pty1 pty2)
                       (error 'non-terminating-unification-error
                              :first-type type1
                              :second-type type2
                              :contained-type pty1
                              :containing-type pty2))
-                    (setf (tyvar-instance pty1) pty2)))
+                    (instantiate! pty1 pty2)))
                  ((tyvar-p pty2)
                   (%unify pty2 pty1))
                  ((and (tyfun-p pty1)
@@ -52,4 +62,3 @@
                          :mismatched-types (list ty1 ty2)))))))
     (%unify type1 type2))
   nil)
-
