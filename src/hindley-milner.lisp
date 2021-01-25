@@ -40,9 +40,10 @@
                      (error "Couldn't determine type of known variable ~S." name))))
         (funcall continue name))))
 
-(defun derive-type (value)
+(defun derive-type (value &key env)
   "Derive the type of the Coalton value expressed as a NODE."
   (check-type value node)
+  (check-type env list)
   (labels ((analyze (expr env non-generic)
              (setf (node-derived-type expr) (analyze-expr expr env non-generic)))
 
@@ -54,7 +55,7 @@
                   (string  string-type)))
 
                (node-variable
-                ;; XXX: Check the global environment!!!
+                ;; FIXME: Check the global environment!!!
                 (lookup-type (node-variable-name expr) env non-generic))
 
                (node-abstraction
@@ -197,6 +198,6 @@
                     (unify value-ty expected-value-ty)
                     ;; Return the type of the entire expression.
                     result-ty))))))
-    (analyze value nil nil)))
+    (analyze value env nil)))
 
 

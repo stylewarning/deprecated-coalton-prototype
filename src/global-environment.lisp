@@ -6,8 +6,8 @@
 
 (defstruct entry
   "An entry in the global value database."
-  (declared-type nil :type (or null ty))
-  (derived-type nil :type (or null ty))
+  (declared-type nil :type (or null ty cty))
+  (derived-type nil :type (or null ty cty))
   source-form
   node)
 
@@ -43,7 +43,7 @@
 
 (defun forward-declare-variable (var &optional (declared-type nil declaredp))
   (check-type var symbol)
-  (check-type declared-type (or ty null))
+  (check-type declared-type (or ty cty null))
   (when (var-knownp var)
     (error "Can't forward declare ~S, which is already known." var))
   (setf (gethash var **global-value-definitions**)
@@ -57,7 +57,7 @@
     (entry-declared-type info)))
 
 (defun (setf var-declared-type) (new-value var)
-  (check-type new-value ty)
+  (check-type new-value (or ty cty))
   (let ((info (var-info var)))
     (alexandria:when-let ((existing-declared-type (entry-declared-type info)))
       (when (type= existing-declared-type new-value)
@@ -80,7 +80,7 @@
     (entry-derived-type info)))
 
 (defun (setf var-derived-type) (new-value var)
-  (check-type new-value ty)
+  (check-type new-value (or ty cty))
   (let ((info (var-info var)))
     (alexandria:when-let ((existing-derived-type (entry-derived-type info)))
       (when (type= existing-derived-type new-value)

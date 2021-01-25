@@ -37,3 +37,7 @@
 (defun coalton:type-of (expr)
   "Return the (unparsed) type of the Coalton expression EXPR."
   (unparse-type (derive-type (parse-form expr))))
+
+(defun install-types-pprint ()
+  (dolist (type '(ty cty tyvar tyapp tyfun))
+    (cl:set-pprint-dispatch type (lambda (stream ty) (format stream "~A" (coalton-impl::unparse-type ty))))))

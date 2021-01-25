@@ -20,7 +20,7 @@
                      ,(analyze (node-abstraction-subexpr expr)))))
 
                (node-let
-                `(let ,(loop :for (var . val) :in (node-let-bindings expr)
+                 `(let ,(loop :for (var . val) :in (node-let-bindings expr)
                              :collect `(,var ,(analyze val)))
                    ,(analyze (node-let-subexpr expr))))
 
@@ -90,6 +90,7 @@
                      ,(analyze (node-if-else expr))))
 
                (node-lisp
+                ;; TODO: Here we should add type checks on the resulting form
                 (node-lisp-form expr))
 
                (node-sequence
@@ -99,7 +100,11 @@
                (node-application
                 (let ((rator (analyze (node-application-rator expr)))
                       (rands (mapcar #'analyze (node-application-rands expr))))
-                  `(funcall ,rator ,@rands)))
+                  (let ((method-class (gethash rator **method-definitions**)))
+                    (if method-class
+                        ;; XXX: This is awful and wrong
+                        `(funcall ,(type-class-instance-method-implementation (gethash rator (type-class-instance-methods (find-class-instance method-class (list (parse-type-expression 'coalton:boolean)))))) ,@rands)
+                        `(funcall ,rator ,@rands)))))
 
                (node-match
                 (alexandria:with-gensyms (value slots)

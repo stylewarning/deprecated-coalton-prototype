@@ -79,7 +79,7 @@ If NAME is not known, it will be made known to the global type database."
           :do (return tycon)
         :finally (return nil)))
 
-;;; TY is forward declared in node.lisp
+;;; CTY, TY, and CX are defined in node.lisp
 
 (defstruct (tyvar (:include ty)
                   (:constructor %make-tyvar))
@@ -128,7 +128,10 @@ If NAME is not known, it will be made known to the global type database."
   "Check equality of types TYPE1 and TYPE2
 
 Types are equivalent when the structure (TYAPP and TYFUN) matches and there exists a bijection between TYVARs of each type."
-  (declare (type ty type1 type2)
+
+  ;; TODO: We need to check for constraints here
+  
+  (declare (type (or ty cty) type1 type2)
            (values boolean))
   ;; VAR-TABLE is an alist with entries
   ;;
@@ -208,9 +211,11 @@ Types are equivalent when the structure (TYAPP and TYFUN) matches and there exis
                           (tyfun-from specific))))))))
 
 (defvar *next-variable-id* 0)
-(defun make-variable ()
-  (prog1 (%make-tyvar :id *next-variable-id*)
-    (incf *next-variable-id*)))
+(defun make-variable (&optional name)
+  (let ((tyvar (%make-tyvar :id *next-variable-id*)))
+    (setf (tyvar-name tyvar) name)
+    (incf *next-variable-id*)
+    tyvar))
 
 (defun variable-name (v)
   (or (tyvar-name v)
@@ -219,6 +224,14 @@ Types are equivalent when the structure (TYAPP and TYFUN) matches and there exis
 (defun unparse-type (ty)
   "Convert a type TY back into an S-expression representation (which could be parsed back again with PARSE-TYPE)."
   (etypecase ty
+    ;; Constrained types
+    (cty
+     `(coalton:for ,@(mapcar (lambda (cx)
+                               `(,(cx-class cx) ,(unparse-type (cx-type cx))))
+                             (cty-constraints ty))
+                   coalton:=>
+                   ,(unparse-type (cty-type ty))))
+    ;; TY substructures
     (tyvar
      (if (tyvar-instance ty)
          (unparse-type (tyvar-instance ty))
@@ -235,6 +248,7 @@ Types are equivalent when the structure (TYAPP and TYFUN) matches and there exis
        `(coalton:fn ,@from coalton:-> ,to)))))
 
 (defun prune (ty)
+  "Prune a type by replacing all non-free variables with their deduced types."
   (etypecase ty
     (tyvar
      (let ((instance (tyvar-instance ty)))
@@ -246,6 +260,11 @@ Types are equivalent when the structure (TYAPP and TYFUN) matches and there exis
      ty)
 
     (tyfun
+     ty)
+
+    (cty
+     (setf (cty-constraints ty) (simplify-type-constraints (cty-constraints ty)))
+     (setf (cty-type ty) (prune (cty-type ty)))
      ty)))
 
 (defun occurs-in-type (v t2)
@@ -254,12 +273,23 @@ Types are equivalent when the structure (TYAPP and TYFUN) matches and there exis
     (if (equalp v pruned-t2)
         t
         (typecase pruned-t2
+          (cty (occurs-in-type v (cty-type t2)))
           (tyapp (occurs-in v (tyapp-types pruned-t2)))
           (tyfun (occurs-in v (cons (tyfun-to pruned-t2) (tyfun-from pruned-t2))))
           (otherwise nil)))))
 
 (defun occurs-in (ty types)
   (some (lambda (ty2) (occurs-in-type ty ty2)) types))
+
+(defun type-contains-free-variable (ty)
+  (etypecase ty
+    (tyvar
+     (null (tyvar-instance ty)))
+    (tyapp
+     (some #'type-contains-free-variable (tyapp-types ty)))
+    (tyfun
+     (or (type-contains-free-variable (tyfun-to ty))
+         (some #'type-contains-free-variable (tyfun-from ty))))))
 
 (defun is-generic (v non-generic)
   (not (occurs-in v non-generic)))
@@ -271,6 +301,13 @@ Types are equivalent when the structure (TYAPP and TYFUN) matches and there exis
     (labels ((freshrec (tp)
                (let ((ptp (prune tp)))
                  (etypecase ptp
+                   (cty
+                    (cty (freshrec (cty-type ptp))
+                         :constraints (mapcar (lambda (cx)
+                                                (cx (cx-class cx)
+                                                    (freshrec (cx-type cx))))
+                                              (cty-constraints ptp))))
+                   
                    (tyvar
                     (if (not (is-generic ptp non-generic))
                         ptp
@@ -293,6 +330,95 @@ Types are equivalent when the structure (TYAPP and TYFUN) matches and there exis
     (and entry
          (cdr entry))))
 
+(defun replace-type-variables (ty dict)
+  "Replace type variables in TY using DICT, returning a new TY
+
+DICT contains conses of (TYVAR . REPLACEMENT-TY)"
+  ;; XXX: Verify this hash table is correct.
+  (let ((table (make-hash-table :test 'equalp)))
+    (labels ((freshrec (tp)
+               (let ((ptp (prune tp)))
+                 (etypecase ptp
+                   (cty
+                    ;; TODO: make sure this is what we want to do with contexts
+                    (cty (freshrec (cty-type ptp))
+                         :constraints (mapcar (lambda (cx)
+                                                (cx (cx-class cx)
+                                                    (freshrec (cx-type cx))))
+                                              (cty-constraints ptp))))
+
+                   (tyvar
+                    (multiple-value-bind (var exists?) (gethash ptp table)
+                      (if exists?
+                          var
+                          (let ((replacement (find ptp dict :key #'car)))
+                            (if replacement
+                                (setf (gethash ptp table) (cdr replacement))
+                                (setf (gethash ptp table) (make-variable)))))))
+                   (tyapp
+                    (apply #'tyapp
+                           (tyapp-constructor ptp)
+                           (mapcar #'freshrec (tyapp-types ptp))))
+                   (tyfun
+                    (tyfun (mapcar #'freshrec (tyfun-from ptp))
+                           (freshrec (tyfun-to ptp))))))))
+      (values (freshrec ty) (alexandria:hash-table-alist table)))))
+
+(defun lift-type-constraints (type)
+  "Lift type constraints in TYPE a the top level CTY
+
+e.g.
+  (FN (FOR (EQ a) a) (for (Eq a) a) -> b)
+becomes
+  (FOR (EQ a) (EQ a) => (FN a a -> b))"
+  (let ((constraints nil))
+    (labels ((%lift (ty)
+               (etypecase ty
+                 (cty
+                  (dolist (constraint (cty-constraints ty))
+                    (push constraint constraints))
+                  (cty-type ty))
+                 (tyvar
+                  ty)
+                 (tyapp
+                  (apply #'tyapp
+                   (tyapp-constructor ty)
+                   (mapcar #'%lift (tyapp-types ty))))
+                 (tyfun
+                  (tyfun
+                   (mapcar #'%lift (tyfun-from ty))
+                   (%lift (tyfun-to ty)))))))
+      (cty (%lift type)
+           :constraints constraints))))
+
+(defun applicable-constraints (type cxs)
+  (remove-if-not (lambda (cx) (occurs-in-type )) cxs))
+
+(defun add-applicable-constraints (type constraints)
+  (let ((cxs
+          (remove-if-not
+           (lambda (cx)
+             (occurs-in-type (cx-type cx) type))
+           constraints)))
+    (if cxs
+        (cty type :constraints cxs)
+        type)))
+
+(defun simplify-type-constraints (cxs)
+  ;; Remove duplicate constraints
+  (setf cxs (remove-duplicates cxs :test #'equalp))
+
+  ;; Remove tautological constraints
+  (setf cxs (remove-if
+             (lambda (cx)
+               (not (type-contains-free-variable (cx-type cx))))
+             cxs)))
+
+(defun normalize-type (type)
+  (let ((cty (lift-type-constraints type)))
+    (setf (cty-constraints cty)
+          (simplify-type-constraints (cty-constraints cty)))
+    cty))
 
 ;;;;;;;;;;;;;;;;;;;;;;; Type Error Conditions ;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -399,6 +525,43 @@ Types are equivalent when the structure (TYAPP and TYFUN) matches and there exis
                              :second-type type2
                              :mismatched-types (list pty1 pty2)))
                     (mapc #'%unify types1 types2)))
+                 ;; CONNNNNNSTRAINTSSS
+                 ((and (cty-p pty1)
+                       (cty-p pty2))
+                  (error "I have no clue"))
+                 ((and (cty-p pty1)
+                       (not (cty-p pty2)))
+                  (let ((inner-type (cty-type pty1)))
+                    (cond
+                      ((tyvar-p inner-type)
+                       ;; TODO: What the fuck
+                       (if (every (lambda (cx)
+                                    (class-instance-knownp (cx-class cx)
+                                                           (list pty2)))
+                                  (cty-constraints pty1))
+                           pty2
+                           (error "nah br0")))
+                      ((tyfun-p inner-type)
+                       (%unify
+                        (tyfun (mapcar
+                                (lambda (type)
+                                  (add-applicable-constraints type (cty-constraints pty1)))
+                                (tyfun-from inner-type))
+                               (add-applicable-constraints (tyfun-to inner-type) (cty-constraints pty1)))
+                        pty2))
+                      ((tyapp-p inner-type)
+                       (%unify
+                        (tyapp (tyapp-constructor inner-type)
+                               (mapcar
+                                (lambda (type)
+                                  (add-applicable-constraints type (cty-constraints pty1)))
+                                (tyapp-types inner-type)))
+                        pty2))
+                      (t (error "Nah")))))
+                 ;; Psh... I'm not writing that twice!
+                 ((and (not (cty-p pty1))
+                       (cty-p pty2))
+                  (%unify pty2 pty1))
                  (t
                   (error 'type-mismatch
                          :first-type type1

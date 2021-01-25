@@ -11,7 +11,7 @@
 
 (define-condition coalton-parse-error (error)
   ((form :initarg :form
-         :reader coalton-parse-error-form)
+         :accessor coalton-parse-error-form)
    (reason-control :initarg :reason-control
                    :reader coalton-parse-error-reason-control)
    (reason-args :initarg :reason-args
@@ -27,6 +27,13 @@
          :form form
          :reason-control reason-control
          :reason-args reason-args))
+
+(defmacro with-parsing-context ((form) &body body)
+  `(handler-case
+       (progn ,@body)
+     (coalton-parse-error (err)
+       (setf (coalton-parse-error-form err) ,form)
+       (error err))))
 
 (defun style-warn (format-control &rest format-args)
   (apply #'alexandria:simple-style-warning format-control format-args))
