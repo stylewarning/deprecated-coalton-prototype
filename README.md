@@ -1,3 +1,9 @@
+# Deprecated! Moved!
+
+**This version of Coalton was a prototype and is here for archival purposes only. It is not maintained. The project is now officially located at [this link](https://github.com/coalton-lang/coalton).**
+
+---
+
 # Coalton
 
 _Check out the [**library**](src/library.lisp) to see the latest that Coalton can express!_
